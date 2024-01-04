@@ -1,21 +1,21 @@
 #pragma once
 #include "MIDI.h"
-#include "rppicomidi_USBH_MIDI_Transport.h"
+#include "EZ_USB_MIDI_HOST_Transport.h"
 
-#include "rppicomidi_USBH_MIDI_namespace.h"
-/// See the comments in rppicomidi_USBH_MIDI_Config.h for
+#include "EZ_USB_MIDI_HOST_namespace.h"
+/// See the comments in EZ_USB_MIDI_HOST_Config.h for
 /// instructions how to tailor the memory requirements of
 /// this library to your application.
-#include "rppicomidi_USBH_MIDI_Config.h"
-BEGIN_RPPICOMIDI_USBH_MIDI_NAMESPACE
+#include "EZ_USB_MIDI_HOST_Config.h"
+BEGIN_EZ_USB_MIDI_HOST_NAMESPACE
 
 
 /// @brief This class models a connected USB MIDI device
 /// Applications normally do not instantiate this class
-/// Use the API for the Rppicomidi_USBH_MIDI class instead.
-class Rppicomidi_USBH_MIDI_Device {
+/// Use the API for the EZ_USB_MIDI_HOST class instead.
+class EZ_USB_MIDI_HOST_Device {
 public:
-  Rppicomidi_USBH_MIDI_Device() : devAddr{0}, nInCables{0}, nOutCables{0}, onMidiInWriteFail{nullptr},
+  EZ_USB_MIDI_HOST_Device() : devAddr{0}, nInCables{0}, nOutCables{0}, onMidiInWriteFail{nullptr},
     // Need to statically construct the interfaces array which is configurable
     // in length from 1 to 16. Sorry the following lines in the initialization
     // list is ugly
@@ -108,7 +108,7 @@ public:
   /// @brief Get the MIDI interface object associated with a particular virtual MIDI cable
   /// @param cable the virtual MIDI cable
   /// @return a reference to the MIDI interface object
-  MIDI_NAMESPACE::MidiInterface<Rppicomidi_USBH_MIDI_Transport, MidiHostSettings>& getMIDIinterface(uint8_t cable) {
+  MIDI_NAMESPACE::MidiInterface<EZ_USB_MIDI_HOST_Transport, MidiHostSettings>& getMIDIinterface(uint8_t cable) {
     return interfaces[cable];
   }
 
@@ -148,8 +148,8 @@ private:
   uint8_t nInCables;
   uint8_t nOutCables;
   void (*onMidiInWriteFail)(uint8_t devAddr, uint8_t cable, bool fifoOverflow);
-  Rppicomidi_USBH_MIDI_Transport transports[RPPICOMIDI_TUH_MIDI_MAX_CABLES];
-  MIDI_NAMESPACE::MidiInterface<Rppicomidi_USBH_MIDI_Transport, MidiHostSettings> interfaces[RPPICOMIDI_TUH_MIDI_MAX_CABLES];
+  EZ_USB_MIDI_HOST_Transport transports[RPPICOMIDI_TUH_MIDI_MAX_CABLES];
+  MIDI_NAMESPACE::MidiInterface<EZ_USB_MIDI_HOST_Transport, MidiHostSettings> interfaces[RPPICOMIDI_TUH_MIDI_MAX_CABLES];
 };
 
-END_RPPICOMIDI_USBH_MIDI_NAMESPACE
+END_EZ_USB_MIDI_HOST_NAMESPACE

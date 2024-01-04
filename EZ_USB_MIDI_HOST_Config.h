@@ -1,5 +1,5 @@
 /*
- * @file rppicomidi_USBH_MIDI_Config.h
+ * @file EZ_USB_MIDI_HOST_Config.h
  * @brief Arduino MIDI Library compatible wrapper for usb_midi_host
  *        application driver
  *
@@ -11,9 +11,9 @@
  * (formally called the FortySevenEffects MIDI library) to send and
  * receive MIDI messages between the application and the device.
  *
- * Most applications should only instantiate the Rppicomidi_USBH_MIDI
- * class by calling Rppicomidi_USBH_MIDI::instance(); e.g.
- *   auto usbhMIDI = Rppicomidi_USBH_MIDI::instance();
+ * Most applications should only instantiate the EZ_USB_MIDI_HOST
+ * class by calling EZ_USB_MIDI_HOST::instance(); e.g.
+ *   auto usbhMIDI = EZ_USB_MIDI_HOST::instance();
  *
  * Please see the CONFIGURATION section below to allow your application
  * to tailor the memory utilization of this class
@@ -68,7 +68,7 @@
 #pragma once
 #include "midi_Settings.h"
 #include "midi_Namespace.h"
-#include "rppicomidi_USBH_MIDI_namespace.h"
+#include "EZ_USB_MIDI_HOST_namespace.h"
 
  /// Default maximum number of connected MIDI devices supported
  #define RPPICOMIDI_TUH_MIDI_MAX_DEV_DEFAULT CFG_TUH_DEVICE_MAX
@@ -119,7 +119,7 @@
 /// multiple of 4 bytes. The sysex buffer from messages may not
 /// have the F0 and F7 bytes, but the USB packet needs to send them.
 #define CFG_TUH_MIDI_TX_BUFSIZE  (((((RPPICOMIDI_TUH_MIDI_MAX_SYSEX) + 2) / 3) + 1) * 4)
-BEGIN_RPPICOMIDI_USBH_MIDI_NAMESPACE
+BEGIN_EZ_USB_MIDI_HOST_NAMESPACE
 struct MidiHostSettings : public MIDI_NAMESPACE::DefaultSettings
 {
     /// Note Off is a different message than Note On with 0 velocity,
@@ -133,4 +133,4 @@ struct MidiHostSettings : public MIDI_NAMESPACE::DefaultSettings
     static const bool Use1ByteParsing = true;
     static const unsigned SysExMaxSize = RPPICOMIDI_TUH_MIDI_MAX_SYSEX;
 };
-END_RPPICOMIDI_USBH_MIDI_NAMESPACE
+END_EZ_USB_MIDI_HOST_NAMESPACE

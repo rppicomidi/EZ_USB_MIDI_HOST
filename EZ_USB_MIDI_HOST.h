@@ -1,5 +1,5 @@
 /*
- * @file rppicomidi_USBH_MIDI.cpp
+ * @file EZ_USB_MIDI_HOST.cpp
  * @brief Arduino MIDI Library compatible wrapper for usb_midi_host
  *        application driver
  *
@@ -11,9 +11,9 @@
  * (formally called the FortySevenEffects MIDI library) to send and
  * receive MIDI messages between the application and the device.
  *
- * Most applications should only instantiate the Rppicomidi_USBH_MIDI
- * class by calling Rppicomidi_USBH_MIDI::instance(); e.g.
- *   auto usbhMIDI = Rppicomidi_USBH_MIDI::instance();
+ * Most applications should only instantiate the EZ_USB_MIDI_HOST
+ * class by calling EZ_USB_MIDI_HOST::instance(); e.g.
+ *   auto usbhMIDI = EZ_USB_MIDI_HOST::instance();
  *
  * Please see the CONFIGURATION section below to allow your application
  * to tailor the memory utilization of this class
@@ -42,16 +42,16 @@
  */
 
 #pragma once
-/// See the comments in rppicomidi_USBH_MIDI_Config.h for
+/// See the comments in EZ_USB_MIDI_HOST_Config.h for
 /// instructions how to tailor the memory requirements of
 /// this library to your application.
-#include "rppicomidi_USBH_MIDI_Config.h"
+#include "EZ_USB_MIDI_HOST_Config.h"
 
-#include "rppicomidi_USBH_MIDI_Device.h"
+#include "EZ_USB_MIDI_HOST_Device.h"
 
-#include "rppicomidi_USBH_MIDI_namespace.h"
+#include "EZ_USB_MIDI_HOST_namespace.h"
 
-BEGIN_RPPICOMIDI_USBH_MIDI_NAMESPACE
+BEGIN_EZ_USB_MIDI_HOST_NAMESPACE
 
 
 using ConnectCallback    = void (*)(uint8_t, uint8_t, uint8_t);
@@ -65,15 +65,15 @@ using DisconnectCallback = void (*)(uint8_t);
 ///
 /// This implementation only supports one USB MIDI host port
 /// because that is all TinyUSB supports.
-class Rppicomidi_USBH_MIDI {
+class EZ_USB_MIDI_HOST {
 public:
-  Rppicomidi_USBH_MIDI() : appOnConnect{nullptr}, appOnDisconnect{nullptr} {
+  EZ_USB_MIDI_HOST() : appOnConnect{nullptr}, appOnDisconnect{nullptr} {
         instance = this;
         for (uint8_t idx = 0; idx < CFG_TUH_DEVICE_MAX; idx++) devAddr2DeviceMap[idx] = nullptr;
     }
 
-  Rppicomidi_USBH_MIDI(Rppicomidi_USBH_MIDI const &) = delete;
-  void operator=(Rppicomidi_USBH_MIDI const &) = delete;
+  EZ_USB_MIDI_HOST(EZ_USB_MIDI_HOST const &) = delete;
+  void operator=(EZ_USB_MIDI_HOST const &) = delete;
 
   /// @brief test if a MIDI device with the given devAddr is connected
   /// @param devAddr the USB device address of the device to test
@@ -97,7 +97,7 @@ public:
   /// @param cable the virtual cable number of the MIDI device the MidiInterface object supports
   /// @return a pointer to the MidiInterface object or nullptr if no object associated
   /// with the devAddr and cable exists (e.g., because the device has been disconnected)
-  MIDI_NAMESPACE::MidiInterface<Rppicomidi_USBH_MIDI_Transport, MidiHostSettings>* getMIDIinterface(uint8_t devAddr, uint8_t cable) {
+  MIDI_NAMESPACE::MidiInterface<EZ_USB_MIDI_HOST_Transport, MidiHostSettings>* getMIDIinterface(uint8_t devAddr, uint8_t cable) {
     auto ptr = getDevFromDevAddr(devAddr);
     return ptr != nullptr ? &(ptr->getMIDIinterface(cable)) : nullptr;
   }
@@ -156,15 +156,15 @@ public:
     return cable < RPPICOMIDI_TUH_MIDI_MAX_CABLES && (hasMessageBitmap & (1 << cable)) != 0;
   }
 
-  /// @brief Get access to the Rppicomidi_USBH_MIDI_Device object associated with the devAddr
+  /// @brief Get access to the EZ_USB_MIDI_HOST_Device object associated with the devAddr
   /// @param devAddr the USB device address of the device
-  /// @return a pointer to the associated Rppicomidi_USBH_MIDI_Device object or nullptr
+  /// @return a pointer to the associated EZ_USB_MIDI_HOST_Device object or nullptr
   /// if there is no device attached to the devAddr
-  Rppicomidi_USBH_MIDI_Device* getDevFromDevAddr(uint8_t devAddr) {
+  EZ_USB_MIDI_HOST_Device* getDevFromDevAddr(uint8_t devAddr) {
     if (devAddr == 0) // 0 is an unconfigured device
         return nullptr;
     uint8_t idx = 0;
-    Rppicomidi_USBH_MIDI_Device* ptr = nullptr;
+    EZ_USB_MIDI_HOST_Device* ptr = nullptr;
     for (; idx < RPPICOMIDI_TUH_MIDI_MAX_DEV && devAddr2DeviceMap[idx] != nullptr && devAddr2DeviceMap[idx]->getDevAddr() != devAddr; idx++) {}
     if (idx < RPPICOMIDI_TUH_MIDI_MAX_DEV && devAddr2DeviceMap[idx] != nullptr && devAddr2DeviceMap[idx]->getDevAddr() == devAddr) {
       ptr = devAddr2DeviceMap[idx];
@@ -178,7 +178,7 @@ public:
   /// @param cable the virtual MIDI IN cable number
   /// @return a pointer to the MIDI Interface object associated with the devAddr and cable
   /// or nullptr if no such interface exists (if, for example, the device was unplugged)
-  MIDI_NAMESPACE::MidiInterface<Rppicomidi_USBH_MIDI_Transport, MidiHostSettings>* getInterfaceFromDeviceAndCable(uint8_t devAddr, uint8_t cable) {
+  MIDI_NAMESPACE::MidiInterface<EZ_USB_MIDI_HOST_Transport, MidiHostSettings>* getInterfaceFromDeviceAndCable(uint8_t devAddr, uint8_t cable) {
     auto dev = getDevFromDevAddr(devAddr);
     if (dev != nullptr && cable < RPPICOMIDI_TUH_MIDI_MAX_CABLES && (cable < dev->getNumInCables() || cable < dev->getNumOutCables()))
       return  &dev->getMIDIinterface(cable);
@@ -186,12 +186,12 @@ public:
   }
 
   // The following 3 functions should only be used by the tuh_midi_*_cb()
-  // callback functions in file rppicomidi_USBH_MIDI.cpp.
+  // callback functions in file EZ_USB_MIDI_HOST.cpp.
   // They are declared public because the tuh_midi_*cb() callbacks are not
   // associated with any object and this class is accessed via the getInstance()
   // function.
   void onConnect(uint8_t devAddr, uint8_t nInCables, uint8_t nOutCables) {
-    // try to allocate a Rppicomidi_USBH_MIDI_Device object for the connected device
+    // try to allocate a EZ_USB_MIDI_HOST_Device object for the connected device
     uint8_t idx = 0;
     for (; idx < RPPICOMIDI_TUH_MIDI_MAX_DEV && devAddr2DeviceMap[idx] != nullptr; idx++) {}
     if (idx < RPPICOMIDI_TUH_MIDI_MAX_DEV && devAddr2DeviceMap[idx] == nullptr) {
@@ -201,7 +201,7 @@ public:
     }
   }
   void onDisconnect(uint8_t devAddr) { 
-    // find the Rppicomidi_USBH_MIDI_Device object allocated for this device
+    // find the EZ_USB_MIDI_HOST_Device object allocated for this device
       auto ptr = getDevFromDevAddr(devAddr);
       if (ptr != nullptr) {
         ptr->onDisconnect(devAddr);
@@ -209,16 +209,16 @@ public:
            appOnDisconnect(devAddr);
       }
   }
-  static Rppicomidi_USBH_MIDI* getInstance() {return instance; }
+  static EZ_USB_MIDI_HOST* getInstance() {return instance; }
 private:
-  Rppicomidi_USBH_MIDI_Device devices[RPPICOMIDI_TUH_MIDI_MAX_DEV];
+  EZ_USB_MIDI_HOST_Device devices[RPPICOMIDI_TUH_MIDI_MAX_DEV];
   ConnectCallback appOnConnect;
   DisconnectCallback appOnDisconnect;
 
   // devAddr2DeviceMap[idx] == a pointer to an address if device idx
   // has been connected or nullptr if not.
   // The problem this solves is RPPICOMIDI_TUH_MIDI_MAX_DEV < CFG_TUH_DEVICE_MAX
-  Rppicomidi_USBH_MIDI_Device* devAddr2DeviceMap[CFG_TUH_DEVICE_MAX];
+  EZ_USB_MIDI_HOST_Device* devAddr2DeviceMap[CFG_TUH_DEVICE_MAX];
 
   /// instance is the unique object that is created for this class.
   /// It does not use the the well known thread safe singleton pattern
@@ -227,7 +227,7 @@ private:
   /// object. Because the object is created before main() starts, there
   /// is no race condition danger. It allows you to access class methods
   /// with simple dot notation instead of classname::instance() symantics.
-  static Rppicomidi_USBH_MIDI* instance;
+  static EZ_USB_MIDI_HOST* instance;
 };
 
-END_RPPICOMIDI_USBH_MIDI_NAMESPACE
+END_EZ_USB_MIDI_HOST_NAMESPACE

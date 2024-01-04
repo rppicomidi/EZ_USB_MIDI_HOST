@@ -1,9 +1,9 @@
 /**
- * @file rppicomidi_USBH_MIDI.cpp
+ * @file EZ_USB_MIDI_HOST.cpp
  * @brief Arduino MIDI Library compatible wrapper for usb_midi_host
  *        application driver
  *
- * See the file rppicomidi_USBH_MIDI.h for usage documentation
+ * See the file EZ_USB_MIDI_HOST.h for usage documentation
  *
  * MIT License
  *
@@ -27,24 +27,24 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-#include "rppicomidi_USBH_MIDI.h"
+#include "EZ_USB_MIDI_HOST.h"
 
-BEGIN_RPPICOMIDI_USBH_MIDI_NAMESPACE
-Rppicomidi_USBH_MIDI* Rppicomidi_USBH_MIDI::instance=nullptr;
-END_RPPICOMIDI_USBH_MIDI_NAMESPACE
+BEGIN_EZ_USB_MIDI_HOST_NAMESPACE
+EZ_USB_MIDI_HOST* EZ_USB_MIDI_HOST::instance=nullptr;
+END_EZ_USB_MIDI_HOST_NAMESPACE
 
 /* TinyUSB callbacks */
 void tuh_midi_mount_cb(uint8_t devAddr, uint8_t inEP, uint8_t outEP, uint8_t nInCables, uint16_t nOutCables)
 {
   (void)inEP;
   (void)outEP;
-  RPPICOMIDI_USBH_MIDI_NAMESPACE::Rppicomidi_USBH_MIDI::getInstance()->onConnect(devAddr, nInCables, nOutCables);
+  EZ_USB_MIDI_HOST_NAMESPACE::EZ_USB_MIDI_HOST::getInstance()->onConnect(devAddr, nInCables, nOutCables);
 }
 
 void tuh_midi_umount_cb(uint8_t devAddr, uint8_t unused)
 {
   (void)unused;
-  RPPICOMIDI_USBH_MIDI_NAMESPACE::Rppicomidi_USBH_MIDI::getInstance()->onDisconnect(devAddr);
+  EZ_USB_MIDI_HOST_NAMESPACE::EZ_USB_MIDI_HOST::getInstance()->onDisconnect(devAddr);
 }
 
 void tuh_midi_rx_cb(uint8_t devAddr, uint32_t numPackets)
@@ -57,7 +57,7 @@ void tuh_midi_rx_cb(uint8_t devAddr, uint32_t numPackets)
       uint16_t bytesRead = tuh_midi_stream_read(devAddr, &cable, buffer, sizeof(buffer));
       if (bytesRead == 0)
         return;
-      auto dev = RPPICOMIDI_USBH_MIDI_NAMESPACE::Rppicomidi_USBH_MIDI::getInstance()->getDevFromDevAddr(devAddr);
+      auto dev = EZ_USB_MIDI_HOST_NAMESPACE::EZ_USB_MIDI_HOST::getInstance()->getDevFromDevAddr(devAddr);
       if (dev != nullptr) {
         dev->writeToInFIFO(cable, buffer, bytesRead);
       }

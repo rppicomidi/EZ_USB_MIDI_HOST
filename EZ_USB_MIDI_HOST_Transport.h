@@ -6,20 +6,20 @@
 #include "tusb.h"
 #endif
 #include "midi_Namespace.h"
-#include "rppicomidi_USBH_MIDI_namespace.h"
-#include "rppicomidi_USBH_MIDI_Config.h"
+#include "EZ_USB_MIDI_HOST_namespace.h"
+#include "EZ_USB_MIDI_HOST_Config.h"
 
 #include "usb_midi_host.h"
 
-BEGIN_RPPICOMIDI_USBH_MIDI_NAMESPACE
+BEGIN_EZ_USB_MIDI_HOST_NAMESPACE
 /// @brief This class models a MIDI IN and MIDI OUT virtual
 /// cable pair of a connected USB MIDI device. It implements
 /// the required Transport class of the MIDI interface class.
 /// Applications normally do not instantiate this class
-/// Use the API for the Rppicomidi_USBH_MIDI class instead.
-class Rppicomidi_USBH_MIDI_Transport {
+/// Use the API for the EZ_USB_MIDI_HOST class instead.
+class EZ_USB_MIDI_HOST_Transport {
 public:
-  Rppicomidi_USBH_MIDI_Transport()  :
+  EZ_USB_MIDI_HOST_Transport()  :
     devAddr(0), //not connected
     cableNum(no_cable), // cable number not assigned
     hasMIDI_IN(false), // so doesn't have MIDI IN
@@ -112,8 +112,8 @@ public:
 
 private:
   // delete copy constructor and assignment operator
-  //Rppicomidi_USBH_MIDI_Transport(const Rppicomidi_USBH_MIDI_Transport&) = delete;
-  //Rppicomidi_USBH_MIDI_Transport& operator=(const Rppicomidi_USBH_MIDI_Transport&) = delete;
+  //EZ_USB_MIDI_HOST_Transport(const EZ_USB_MIDI_HOST_Transport&) = delete;
+  //EZ_USB_MIDI_HOST_Transport& operator=(const EZ_USB_MIDI_HOST_Transport&) = delete;
   static uint8_t const no_cable = 16;  //!< legal MIDI cable numbers are 0-15
   uint8_t devAddr;
   uint8_t cableNum;
@@ -127,4 +127,4 @@ private:
   bool outFIFOoverflow;
 };
 
-END_RPPICOMIDI_USBH_MIDI_NAMESPACE
+END_EZ_USB_MIDI_HOST_NAMESPACE

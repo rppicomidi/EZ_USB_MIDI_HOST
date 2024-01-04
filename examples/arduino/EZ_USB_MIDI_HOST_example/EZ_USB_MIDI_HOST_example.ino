@@ -33,79 +33,74 @@
  * This program works with a single USB MIDI device connected via a USB hub, but it
  * does not handle multiple USB MIDI devices connected at the same time.
  */
-#include <stdio.h>
-#include "pico/stdlib.h"
-#include "pico/binary_info.h"
-#include "bsp/board_api.h"
-#include "rppicomidi_USBH_MIDI.h"
-#ifdef RPPICOMIDI_PICO_W
-#include "pico/cyw43_arch.h"
-#endif
+#include "EZ_USB_MIDI_HOST.h"
+// USB Host object
+Adafruit_USBH_Host USBHost;
 
-USING_NAMESPACE_USBH_MIDI
+USING_NAMESPACE_EZ_USB_MIDI_HOST
 USING_NAMESPACE_MIDI
 
-static Rppicomidi_USBH_MIDI usbhMIDI;
+static EZ_USB_MIDI_HOST usbhMIDI;
 static uint8_t midiDevAddr = 0;
 
 /* MIDI IN MESSAGE REPORTING */
 static void onMidiError(int8_t errCode)
 {
-    printf("MIDI Errors: %s %s %s\r\n", (errCode & (1UL << ErrorParse)) ? "Parse":"",
+    Serial1.printf("MIDI Errors: %s %s %s\r\n", (errCode & (1UL << ErrorParse)) ? "Parse":"",
         (errCode & (1UL << ErrorActiveSensingTimeout)) ? "Active Sensing Timeout" : "",
         (errCode & (1UL << WarningSplitSysEx)) ? "Split SysEx":"");
 }
 
 static void onNoteOff(Channel channel, byte note, byte velocity)
 {
-    printf("C%u: Note off#%u v=%u\r\n", channel, note, velocity);
+    Serial1.printf("C%u: Note off#%u v=%u\r\n", channel, note, velocity);
 }
 
 static void onNoteOn(Channel channel, byte note, byte velocity)
 {
-    printf("C%u: Note on#%u v=%u\r\n", channel, note, velocity);
+    Serial1.printf("C%u: Note on#%u v=%u\r\n", channel, note, velocity);
 }
 
 static void onPolyphonicAftertouch(Channel channel, byte note, byte amount)
 {
-    printf("C%u: PAT#%u=%u\r\n", channel, note, amount);
+    Serial1.printf("C%u: PAT#%u=%u\r\n", channel, note, amount);
 }
 
 static void onControlChange(Channel channel, byte controller, byte value)
 {
-    printf("C%u: CC#%u=%u\r\n", channel, controller, value);
+    Serial1.printf("C%u: CC#%u=%u\r\n", channel, controller, value);
 }
 
 static void onProgramChange(Channel channel, byte program)
 {
-    printf("C%u: Prog=%u\r\n", channel, program);
+    Serial1.printf("C%u: Prog=%u\r\n", channel, program);
 }
 
 static void onAftertouch(Channel channel, byte value)
 {
-    printf("C%u: AT=%u\r\n", channel, value);
+    Serial1.printf("C%u: AT=%u\r\n", channel, value);
 }
 
 static void onPitchBend(Channel channel, int value)
 {
-    printf("C%u: PB=%d\r\n", channel, value);
+    Serial1.printf("C%u: PB=%d\r\n", channel, value);
 }
 
 static void onSysEx(byte * array, unsigned size)
 {
-    printf("SysEx:\r\n");
+    Serial1.printf("SysEx:\r\n");
     unsigned multipleOf8 = size/8;
     unsigned remOf8 = size % 8;
     for (unsigned idx=0; idx < multipleOf8; idx++) {
         for (unsigned jdx = 0; jdx < 8; jdx++) {
-            printf("%02x ", *array++);
+            Serial1.printf("%02x ", *array++);
         }
-        printf("\r\n");
+        Serial1.printf("\r\n");
     }
     for (unsigned idx = 0; idx < remOf8; idx++) {
-        printf("%02x ", *array++);
+        Serial1.printf("%02x ", *array++);
     }
-    printf("\r\n");
+    Serial1.printf("\r\n");
 }
 
 static void onSMPTEqf(byte data)
@@ -114,78 +109,78 @@ static void onSMPTEqf(byte data)
     data &= 0xF;    
     static const char* fps[4] = {"24", "25", "30DF", "30ND"};
     switch (type) {
-        case 0: printf("SMPTE FRM LS %u \r\n", data); break;
-        case 1: printf("SMPTE FRM MS %u \r\n", data); break;
-        case 2: printf("SMPTE SEC LS %u \r\n", data); break;
-        case 3: printf("SMPTE SEC MS %u \r\n", data); break;
-        case 4: printf("SMPTE MIN LS %u \r\n", data); break;
-        case 5: printf("SMPTE MIN MS %u \r\n", data); break;
-        case 6: printf("SMPTE HR LS %u \r\n", data); break;
+        case 0: Serial1.printf("SMPTE FRM LS %u \r\n", data); break;
+        case 1: Serial1.printf("SMPTE FRM MS %u \r\n", data); break;
+        case 2: Serial1.printf("SMPTE SEC LS %u \r\n", data); break;
+        case 3: Serial1.printf("SMPTE SEC MS %u \r\n", data); break;
+        case 4: Serial1.printf("SMPTE MIN LS %u \r\n", data); break;
+        case 5: Serial1.printf("SMPTE MIN MS %u \r\n", data); break;
+        case 6: Serial1.printf("SMPTE HR LS %u \r\n", data); break;
         case 7:
-            printf("SMPTE HR MS %u FPS:%s\r\n", data & 0x1, fps[(data >> 1) & 3]);
+            Serial1.printf("SMPTE HR MS %u FPS:%s\r\n", data & 0x1, fps[(data >> 1) & 3]);
             break;
         default:
-          printf("invalid SMPTE data byte %u\r\n", data);
+          Serial1.printf("invalid SMPTE data byte %u\r\n", data);
           break;
     }
 }
 
 static void onSongPosition(unsigned beats)
 {
-    printf("SongP=%u\r\n", beats);
+    Serial1.printf("SongP=%u\r\n", beats);
 }
 
 static void onSongSelect(byte songnumber)
 {
-    printf("SongS#%u\r\n", songnumber);
+    Serial1.printf("SongS#%u\r\n", songnumber);
 }
 
 static void onTuneRequest()
 {
-    printf("Tune\r\n");
+    Serial1.printf("Tune\r\n");
 }
 
 static void onMidiClock()
 {
-    printf("Clock\r\n");
+    Serial1.printf("Clock\r\n");
 }
 
 static void onMidiStart()
 {
-    printf("Start\r\n");
+    Serial1.printf("Start\r\n");
 }
 
 static void onMidiContinue()
 {
-    printf("Cont\r\n");
+    Serial1.printf("Cont\r\n");
 }
 
 static void onMidiStop()
 {
-    printf("Stop\r\n");
+    Serial1.printf("Stop\r\n");
 }
 
 static void onActiveSense()
 {
-    printf("ASen\r\n");
+    Serial1.printf("ASen\r\n");
 }
 
 static void onSystemReset()
 {
-    printf("SysRst\r\n");
+    Serial1.printf("SysRst\r\n");
 }
 
 static void onMidiTick()
 {
-    printf("Tick\r\n");
+    Serial1.printf("Tick\r\n");
 }
 
 static void onMidiInWriteFail(uint8_t devAddr, uint8_t cable, bool fifoOverflow)
 {
     if (fifoOverflow)
-        printf("Dev %u cable %u: MIDI IN FIFO overflow\r\n", devAddr, cable);
+        Serial1.printf("Dev %u cable %u: MIDI IN FIFO overflow\r\n", devAddr, cable);
     else
-        printf("Dev %u cable %u: MIDI IN FIFO error\r\n", devAddr, cable);
+        Serial1.printf("Dev %u cable %u: MIDI IN FIFO error\r\n", devAddr, cable);
 }
 
 static void registerMidiInCallbacks()
@@ -224,14 +219,14 @@ static void registerMidiInCallbacks()
 /* CONNECTION MANAGEMENT */
 static void onMIDIconnect(uint8_t devAddr, uint8_t nInCables, uint8_t nOutCables)
 {
-    printf("MIDI device at address %u has %u IN cables and %u OUT cables\r\n", devAddr, nInCables, nOutCables);
+    Serial1.printf("MIDI device at address %u has %u IN cables and %u OUT cables\r\n", devAddr, nInCables, nOutCables);
     midiDevAddr = devAddr;
     registerMidiInCallbacks();
 }
 
 static void onMIDIdisconnect(uint8_t devAddr)
 {
-    printf("MIDI device at address %u unplugged\r\n", devAddr);
+    Serial1.printf("MIDI device at address %u unplugged\r\n", devAddr);
     midiDevAddr = 0;
 }
 
@@ -243,17 +238,13 @@ static void blinkLED(void)
     const uint32_t intervalMs = 1000;
     static uint32_t startMs = 0;
 
-    static bool led_state = false;
-    if ( board_millis() - startMs < intervalMs)
+    static bool ledState = false;
+    if ( millis() - startMs < intervalMs)
         return;
     startMs += intervalMs;
 
-    led_state = !led_state;
-#if RPPICOMIDI_PICO_W
-    cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, led_state);
-#else
-    board_led_write(led_state);
-#endif
+    ledState = !ledState;
+    digitalWrite(LED_BUILTIN, ledState ? HIGH:LOW); 
 }
 
 static void sendNextNote()
@@ -269,7 +260,7 @@ static void sendNextNote()
     if (intf == nullptr)
         return; // not connected
     
-    if ( board_millis() - startMs < intervalMs)
+    if ( millis() - startMs < intervalMs)
         return; // not enough time
     startMs += intervalMs;
     intf->sendNoteOn(offNote++, 0, 1);
@@ -282,38 +273,34 @@ static void sendNextNote()
 }
 
 /* APPLICATION STARTS HERE */
+void setup()
+{
+  Serial1.begin(115200);
 
-int main() {
-
-    bi_decl(bi_program_description("A USB MIDI host example."));
-    usbhMIDI.setAppOnConnect(onMIDIconnect);
-    usbhMIDI.setAppOnDisconnect(onMIDIdisconnect);
-    board_init();
-    printf("Pico MIDI Host Example\r\n");
-    tusb_init();
-#if RPPICOMIDI_PICO_W
-    // The Pico W LED is attached to the CYW43 WiFi/Bluetooth module
-    // Need to initialize it so the the LED blink can work
-    if (cyw43_arch_init()) {
-        printf("WiFi init failed");
-        return -1;
-    }
-#endif    
-    while (1) {
-        // Update the USB Host
-        tuh_task();
-
-        // Handle any incoming data; triggers MIDI IN callbacks
-        usbhMIDI.readAll();
-    
-        // Do other processing that might generate pending MIDI OUT data
-        sendNextNote();
-    
-        // Tell the USB Host to send as much pending MIDI OUT data as possible
-        usbhMIDI.writeFlushAll();
-    
-        // Do other non-USB host processing
-        blinkLED();
-    }
-    return 0; // Never gets here
+  delay(2000);   // wait for serial port
+  pinMode(LED_BUILTIN, OUTPUT);
+  USBHost.begin(0);
+  Serial1.println("TinyUSB MIDI Host Example");
+  usbhMIDI.setAppOnConnect(onMIDIconnect);
+  usbhMIDI.setAppOnDisconnect(onMIDIdisconnect);
 }
+
+void loop() {    
+  while (1) {
+    // Update the USB Host
+    USBHost.task();
+
+    // Handle any incoming data; triggers MIDI IN callbacks
+    usbhMIDI.readAll();
+    
+    // Do other processing that might generate pending MIDI OUT data
+    sendNextNote();
+    
+    // Tell the USB Host to send as much pending MIDI OUT data as possible
+    usbhMIDI.writeFlushAll();
+    
+    // Do other non-USB host processing
+    blinkLED();
+  }
+}
+

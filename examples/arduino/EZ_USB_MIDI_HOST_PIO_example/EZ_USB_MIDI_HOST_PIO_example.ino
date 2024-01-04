@@ -36,14 +36,14 @@
 
 #include "pio_usb.h"
 #define HOST_PIN_DP   16   // Pin used as D+ for host, D- = D+ + 1
-#include "rppicomidi_USBH_MIDI.h"
+#include "EZ_USB_MIDI_HOST.h"
 // USB Host object
 Adafruit_USBH_Host USBHost;
 
-USING_NAMESPACE_USBH_MIDI
+USING_NAMESPACE_EZ_USB_MIDI_HOST
 USING_NAMESPACE_MIDI
 
-static Rppicomidi_USBH_MIDI usbhMIDI;
+static EZ_USB_MIDI_HOST usbhMIDI;
 static uint8_t midiDevAddr = 0;
 
 static bool core0_booting = true;

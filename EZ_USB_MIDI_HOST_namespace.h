@@ -1,6 +1,6 @@
 /**
- * @file rppicomidi_USBH_MIDI_namespace.h
- * @brief Namespace definition helper for rppicomidi_USBH_MIDI Arduino wrapper
+ * @file EZ_USB_MIDI_HOST_namespace.h
+ * @brief Namespace definition helper for EZ_USB_MIDI_HOST Arduino wrapper
  *
  * This file follows the pattern used in the Arduino MIDI driver.
  *
@@ -28,12 +28,12 @@
  */
 #pragma once
 
-#define RPPICOMIDI_USBH_MIDI_NAMESPACE                  rppicomidi_usbh_midi
-#define BEGIN_RPPICOMIDI_USBH_MIDI_NAMESPACE            namespace RPPICOMIDI_USBH_MIDI_NAMESPACE {
-#define END_RPPICOMIDI_USBH_MIDI_NAMESPACE              }
+#define EZ_USB_MIDI_HOST_NAMESPACE                  ez_usb_midihost
+#define BEGIN_EZ_USB_MIDI_HOST_NAMESPACE            namespace EZ_USB_MIDI_HOST_NAMESPACE {
+#define END_EZ_USB_MIDI_HOST_NAMESPACE              }
 
-#define USING_NAMESPACE_USBH_MIDI            using namespace RPPICOMIDI_USBH_MIDI_NAMESPACE;
+#define USING_NAMESPACE_EZ_USB_MIDI_HOST            using namespace EZ_USB_MIDI_HOST_NAMESPACE;
 
-BEGIN_RPPICOMIDI_USBH_MIDI_NAMESPACE
+BEGIN_EZ_USB_MIDI_HOST_NAMESPACE
 
-END_RPPICOMIDI_USBH_MIDI_NAMESPACE
+END_EZ_USB_MIDI_HOST_NAMESPACE

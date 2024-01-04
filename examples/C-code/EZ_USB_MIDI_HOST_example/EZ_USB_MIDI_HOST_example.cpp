@@ -37,21 +37,15 @@
 #include "pico/stdlib.h"
 #include "pico/binary_info.h"
 #include "bsp/board_api.h"
-#include "pico/multicore.h"
-#include "pio_usb.h"
-#include "rppicomidi_USBH_MIDI.h"
+#include "EZ_USB_MIDI_HOST.h"
 #ifdef RPPICOMIDI_PICO_W
 #include "pico/cyw43_arch.h"
 #endif
 
-USING_NAMESPACE_USBH_MIDI
+USING_NAMESPACE_EZ_USB_MIDI_HOST
 USING_NAMESPACE_MIDI
-// Because the PIO USB code runs in core 1
-// and USB MIDI OUT sends are triggered on core 0,
-// need to synchronize core startup
-static volatile bool core1_booting = true;
-static volatile bool core0_booting = true;
-static Rppicomidi_USBH_MIDI usbhMIDI;
+
+static EZ_USB_MIDI_HOST usbhMIDI;
 static uint8_t midiDevAddr = 0;
 
 /* MIDI IN MESSAGE REPORTING */
@@ -288,45 +282,15 @@ static void sendNextNote()
 }
 
 /* APPLICATION STARTS HERE */
-void core1_main() {
-    sleep_ms(10);
-    pio_usb_configuration_t pio_cfg = PIO_USB_DEFAULT_CONFIG;
-    // Use GP16 for USB D+ and GP17 for USB D-
-    pio_cfg.pin_dp = 16;
-    // Swap PIOs from default. The RX state machine takes up the
-    // whole PIO program memory. Without these two lines, if you
-    // try to use this code on a Pico W board, the CYW43 SPI PIO
-    // code, which runs on PIO 1, won't fit.
-    // Other potential conflict is the DMA channel tx_ch. However,
-    // the CYW43 SPI driver code is not hard-wired to any particular
-    // DMA channel, so as long as tuh_configure() and tuh_ini()run
-    // after board_init(), which also calls tuh_configure(), and before
-    // cyw43_arch_init(), there should be no conflict.
-    pio_cfg.pio_rx_num = 0;
-    pio_cfg.pio_tx_num = 1;
-    tuh_configure(BOARD_TUH_RHPORT, TUH_CFGID_RPI_PIO_USB_CONFIGURATION, &pio_cfg);
 
-    tuh_init(BOARD_TUH_RHPORT);
-    core1_booting = false;
-    while(core0_booting) {
-    }
-    while (true) {
-        tuh_task(); // tinyusb host task
-    }
-}
 int main() {
 
     bi_decl(bi_program_description("A USB MIDI host example."));
     usbhMIDI.setAppOnConnect(onMIDIconnect);
     usbhMIDI.setAppOnDisconnect(onMIDIdisconnect);
     board_init();
-    multicore_reset_core1();
-    // all USB task run in core1
-    multicore_launch_core1(core1_main);
-    // wait for core 1 to finish claiming PIO state machines and DMA
-    while(core1_booting) {
-    }
     printf("Pico MIDI Host Example\r\n");
+    tusb_init();
 #if RPPICOMIDI_PICO_W
     // The Pico W LED is attached to the CYW43 WiFi/Bluetooth module
     // Need to initialize it so the the LED blink can work
@@ -334,9 +298,11 @@ int main() {
         printf("WiFi init failed");
         return -1;
     }
-    core0_booting = false;
 #endif    
     while (1) {
+        // Update the USB Host
+        tuh_task();
+
         // Handle any incoming data; triggers MIDI IN callbacks
         usbhMIDI.readAll();
     
