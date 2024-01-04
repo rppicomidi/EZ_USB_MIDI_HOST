@@ -18,7 +18,7 @@ processor that runs the USB MIDI Host Library.
 
 # Adding this library to your project
 ## C/C++ Programs
-First, you must install the [usb_midi_host]() library in your file
+First, you must install the [usb_midi_host](https://github.com/rppicomidi/usb_midi_host) library in your file
 system at the same directory level as this project. That is,
 if this library source is installed in directory `rppicomidi_USBH_MIDI`,
 then the directory of the usb_midi_host library must be
@@ -26,24 +26,30 @@ then the directory of the usb_midi_host library must be
 you have the pico-sdk installed correctly, that the TinyUSB library
 is up to date, and if your hardware requires it, the Pico_PIO_USB
 library is installed. See the Building C/C++ applications section
-of the `usb_midi_host` [REAMDE](https://github.com/rppicomidi/usb_midi_host/blob/main/README.md)
+of the usb_midi_host [REAMDE](https://github.com/rppicomidi/usb_midi_host/blob/main/README.md)
 for more information.
 Finally, you must install the [Arduino MIDI Library](https://github.com/FortySevenEffects/arduino_midi_library)
 at the same directory level as this library and the usb_midi_host library.
 
 In the project's `CMakeLists.txt` `target_link_libraries` section, 
-add the `rppicomidi_USBH_MIDI` library instead. The library interface
+add the `rppicomidi_USBH_MIDI` library. The library interface
 in cmake will pull in other library dependencies it needs.
-See the examples in `examples/C-Code` for examples.
+See the examples in `examples/C-Code` for examples. If you are
+using the Pico PIO USB Library to implement the USB Host,
+see the `rppicomidi_PIO_USB_example` for other details.
 
 ## Arduino
-First, use the Library Manager to install this library and install all of
+First, use the Library Manager to install this library (TODO: publish this library
+to the Arduino Library Registry) and install all of
 its dependencies (Adafruit TinyUSB Arduino Library, the Arduino MIDI Library,
 the usb_midi_host Library). Next, if your hardware requires it, install the
 Pico_PIO_USB library.
 
 Adding `#include "rppicomidi_TUSB_MIDI.h"` to your sketch should be sufficient
 to integrate your Arduino sketch with this library and all of its dependencies.
+If you are using the Pico PIO USB Library to implement the host, you must
+also add `#include "pio_usb.h` for `#include "rppicomidi_TUSB_MIDI.h"`.
+See the `rppicomidi_PIO_USB_example` for other details.
 
 # Arduino MIDI Library Wrapper Design
 The Arduino MIDI Library has a Transport
