@@ -27,7 +27,7 @@ then the directory of the usb_midi_host library must be
 you have the pico-sdk installed correctly, that the TinyUSB library
 is up to date, and if your hardware requires it, the Pico_PIO_USB
 library is installed. See the Building C/C++ applications section
-of the usb_midi_host [REAMDE](https://github.com/rppicomidi/usb_midi_host/blob/main/README.md)
+of the usb_midi_host [README](https://github.com/rppicomidi/usb_midi_host/blob/main/README.md)
 for more information.
 Finally, you must install the [Arduino MIDI Library](https://github.com/FortySevenEffects/arduino_midi_library)
 at the same directory level as this library and the usb_midi_host library.
@@ -150,9 +150,9 @@ your hardware requires it, install the Pico_PIO_USB library.
 Next select File->Examples->EZ_USB_MIDI_HOST->arduino->[example program name].
 A new sketch window will open up. See the Building Arduino Applications section 
 of the usb_midi_host
-[REAMDE](https://github.com/rppicomidi/usb_midi_host/blob/main/README.md) for
+[README](https://github.com/rppicomidi/usb_midi_host/blob/main/README.md) for
 for setting up the board parameters. Note that native rp2040 hardware example
 directs Serial output to the Serial1 port, which is rp2040 UART0.
 
 # CONFIGURATION and IMPLEMENTATION DETAILS
-See the usb_midi_host library [REAMDE](https://github.com/rppicomidi/usb_midi_host/blob/main/README.md).
+See the usb_midi_host library [README](https://github.com/rppicomidi/usb_midi_host/blob/main/README.md).
