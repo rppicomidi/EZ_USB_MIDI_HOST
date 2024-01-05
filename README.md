@@ -1,8 +1,9 @@
 # EZ_USB_MIDI_HOST
 This README file contains the design notes and limitations of the
-C++ wrapper code that lets Arduino sketches and C/C++ programs
+C++ library code that lets Arduino sketches and C/C++ programs
 use the Arduino MIDI Library with the usb_midi_host library and
-the Adafruit TinyUSB Library.
+the TinyUSB Library (Arduino sketches require the Adafruit TinyUSB
+Library).
 
 The Arduino MIDI Library provides an API that performs most
 of the MIDI byte-level parsing and encoding that applications
@@ -32,15 +33,14 @@ Finally, you must install the [Arduino MIDI Library](https://github.com/FortySev
 at the same directory level as this library and the usb_midi_host library.
 
 In the project's `CMakeLists.txt` `target_link_libraries` section, 
-add the `` library. The library interface
+add the `EZ_USB_MIDI_HOST` library. The library interface
 in cmake will pull in other library dependencies it needs.
 See the examples in `examples/C-Code` for examples. If you are
 using the Pico PIO USB Library to implement the USB Host,
 see the `EZ_USB_MIDI_HOST_PIO_example` for other details.
 
 ## Arduino
-First, use the Library Manager to install this library (TODO: publish this library
-to the Arduino Library Registry) and install all of
+First, use the Library Manager to install this library and install all of
 its dependencies (Adafruit TinyUSB Arduino Library, the Arduino MIDI Library,
 the usb_midi_host Library). Next, if your hardware requires it, install the
 Pico_PIO_USB library.
@@ -48,7 +48,7 @@ Pico_PIO_USB library.
 Adding `#include "EZ_USB_MIDI_HOST.h"` to your sketch should be sufficient
 to integrate your Arduino sketch with this library and all of its dependencies.
 If you are using the Pico PIO USB Library to implement the host, you must
-also add `#include "pio_usb.h` for `#include "EZ_USB_MIDI_HOSTI.h"`.
+also add `#include "pio_usb.h"` for `#include "EZ_USB_MIDI_HOST.h"`.
 See the `EZ_USB_MIDI_HOST_PIO_example` for other details.
 
 # EZ_USB_MIDI_HOST Library Design
@@ -60,7 +60,7 @@ If you connect a USB hub to the host port, you can have up to the
 maximum supported number of hub ports devices connected. Finally, USB
 MIDI devices can be connected and disconnected while the program is running.
 
-To make this complexity more manageable, this wrapper provides the
+To make this complexity more manageable, this library provides the
 following software components layered as follows:
 
 |              |                           |
@@ -108,7 +108,7 @@ implement the `DisconnectCallback` function to unregister the MIDI IN
 callbacks associated with the disconnected device address and
 to forget the device address of the unplugged MIDI device.
 
-All the setup section of the main application has to do is register
+All the `Setup()` function of the main application has to do is register
 the ConnectCallback, DisconnectCallback, and call the library's `begin()`
 function.
 
@@ -125,11 +125,11 @@ Each of the 4 example program does the same thing:
 - print out every MIDI message it receives on cable 0.
 
 The only difference among the example programs is C/C++ vs.
-Arduino, and native RP2040 USB host hardware vs. Pico_PIO_USB
+Arduino, and native USB host hardware vs. Pico_PIO_USB
 USB host hardware. 
 
 ### C/C++ Examples
-To build the C/C++ examples, install the pico-sdk all required
+To build the rp2040 C/C++ examples, install the pico-sdk and all required
 libraries in your build environment.
 
 Then enter these commands
