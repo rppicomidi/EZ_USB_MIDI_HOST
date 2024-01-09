@@ -33,6 +33,13 @@
  * This program works with a single USB MIDI device connected via a USB hub, but it
  * does not handle multiple USB MIDI devices connected at the same time.
  */
+
+#if !defined(USE_TINYUSB_HOST) || !defined(USE_TINYUSB)
+#error "Please use the Menu to select Tools->USB Stack: Adafruit TinyUSB Host"
+#else
+#warning "All Serial Monitor Output is on Serial1"
+#endif
+
 #include "EZ_USB_MIDI_HOST.h"
 // USB Host object
 Adafruit_USBH_Host USBHost;

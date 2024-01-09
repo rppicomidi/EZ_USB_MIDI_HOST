@@ -33,7 +33,9 @@
  * This program works with a single USB MIDI device connected via a USB hub, but it
  * does not handle multiple USB MIDI devices connected at the same time.
  */
-
+#if defined(USE_TINYUSB_HOST) || !defined(USE_TINYUSB)
+#error "Please use the Menu to select Tools->USB Stack: Adafruit TinyUSB"
+#endif
 #include "pio_usb.h"
 #define HOST_PIN_DP   16   // Pin used as D+ for host, D- = D+ + 1
 #include "EZ_USB_MIDI_HOST.h"
