@@ -65,10 +65,11 @@ using DisconnectCallback = void (*)(uint8_t);
 ///
 /// This implementation only supports one USB MIDI host port
 /// because that is all TinyUSB supports.
+template<class settings>
 class EZ_USB_MIDI_HOST {
 public:
   EZ_USB_MIDI_HOST() : appOnConnect{nullptr}, appOnDisconnect{nullptr} {
-        instance = this;
+        //instance = this;
         for (uint8_t idx = 0; idx < CFG_TUH_DEVICE_MAX; idx++) devAddr2DeviceMap[idx] = nullptr;
     }
 
@@ -97,7 +98,7 @@ public:
   /// @param cable the virtual cable number of the MIDI device the MidiInterface object supports
   /// @return a pointer to the MidiInterface object or nullptr if no object associated
   /// with the devAddr and cable exists (e.g., because the device has been disconnected)
-  MIDI_NAMESPACE::MidiInterface<EZ_USB_MIDI_HOST_Transport, MidiHostSettings>* getMIDIinterface(uint8_t devAddr, uint8_t cable) {
+  MIDI_NAMESPACE::MidiInterface<EZ_USB_MIDI_HOST_Transport<settings>, settings>* getMIDIinterface(uint8_t devAddr, uint8_t cable) {
     auto ptr = getDevFromDevAddr(devAddr);
     return ptr != nullptr ? &(ptr->getMIDIinterface(cable)) : nullptr;
   }
@@ -160,11 +161,11 @@ public:
   /// @param devAddr the USB device address of the device
   /// @return a pointer to the associated EZ_USB_MIDI_HOST_Device object or nullptr
   /// if there is no device attached to the devAddr
-  EZ_USB_MIDI_HOST_Device* getDevFromDevAddr(uint8_t devAddr) {
+  EZ_USB_MIDI_HOST_Device<settings>* getDevFromDevAddr(uint8_t devAddr) {
     if (devAddr == 0) // 0 is an unconfigured device
         return nullptr;
     uint8_t idx = 0;
-    EZ_USB_MIDI_HOST_Device* ptr = nullptr;
+    EZ_USB_MIDI_HOST_Device<settings>* ptr = nullptr;
     for (; idx < RPPICOMIDI_TUH_MIDI_MAX_DEV && devAddr2DeviceMap[idx] != nullptr && devAddr2DeviceMap[idx]->getDevAddr() != devAddr; idx++) {}
     if (idx < RPPICOMIDI_TUH_MIDI_MAX_DEV && devAddr2DeviceMap[idx] != nullptr && devAddr2DeviceMap[idx]->getDevAddr() == devAddr) {
       ptr = devAddr2DeviceMap[idx];
@@ -178,7 +179,7 @@ public:
   /// @param cable the virtual MIDI IN cable number
   /// @return a pointer to the MIDI Interface object associated with the devAddr and cable
   /// or nullptr if no such interface exists (if, for example, the device was unplugged)
-  MIDI_NAMESPACE::MidiInterface<EZ_USB_MIDI_HOST_Transport, MidiHostSettings>* getInterfaceFromDeviceAndCable(uint8_t devAddr, uint8_t cable) {
+  MIDI_NAMESPACE::MidiInterface<EZ_USB_MIDI_HOST_Transport<settings>, settings>* getInterfaceFromDeviceAndCable(uint8_t devAddr, uint8_t cable) {
     auto dev = getDevFromDevAddr(devAddr);
     if (dev != nullptr && cable < RPPICOMIDI_TUH_MIDI_MAX_CABLES && (cable < dev->getNumInCables() || cable < dev->getNumOutCables()))
       return  &dev->getMIDIinterface(cable);
@@ -209,16 +210,16 @@ public:
            appOnDisconnect(devAddr);
       }
   }
-  static EZ_USB_MIDI_HOST* getInstance() {return instance; }
+  //static EZ_USB_MIDI_HOST<settings>* getInstance() {return instance; }
 private:
-  EZ_USB_MIDI_HOST_Device devices[RPPICOMIDI_TUH_MIDI_MAX_DEV];
+  EZ_USB_MIDI_HOST_Device<settings> devices[RPPICOMIDI_TUH_MIDI_MAX_DEV];
   ConnectCallback appOnConnect;
   DisconnectCallback appOnDisconnect;
 
   // devAddr2DeviceMap[idx] == a pointer to an address if device idx
   // has been connected or nullptr if not.
   // The problem this solves is RPPICOMIDI_TUH_MIDI_MAX_DEV < CFG_TUH_DEVICE_MAX
-  EZ_USB_MIDI_HOST_Device* devAddr2DeviceMap[CFG_TUH_DEVICE_MAX];
+  EZ_USB_MIDI_HOST_Device<settings>* devAddr2DeviceMap[CFG_TUH_DEVICE_MAX];
 
   /// instance is the unique object that is created for this class.
   /// It does not use the the well known thread safe singleton pattern
@@ -227,7 +228,43 @@ private:
   /// object. Because the object is created before main() starts, there
   /// is no race condition danger. It allows you to access class methods
   /// with simple dot notation instead of classname::instance() symantics.
-  static EZ_USB_MIDI_HOST* instance;
+  //static EZ_USB_MIDI_HOST<settings>* instance;
 };
 
 END_EZ_USB_MIDI_HOST_NAMESPACE
+
+#define RPPICOMIDI_EZ_USB_MIDI_HOST_INSTANCE(name_, settings) \
+USING_NAMESPACE_EZ_USB_MIDI_HOST \
+\
+    static EZ_USB_MIDI_HOST<settings> name_; \
+void tuh_midi_mount_cb(uint8_t devAddr, uint8_t inEP, uint8_t outEP, uint8_t nInCables, uint16_t nOutCables) \
+{ \
+  (void)inEP; \
+  (void)outEP; \
+  name_.onConnect(devAddr, nInCables, nOutCables); \
+} \
+\
+void tuh_midi_umount_cb(uint8_t devAddr, uint8_t unused) \
+{ \
+  (void)unused; \
+  name_.onDisconnect(devAddr); \
+} \
+\
+void tuh_midi_rx_cb(uint8_t devAddr, uint32_t numPackets) \
+{ \
+  if (numPackets != 0) \
+  { \
+    uint8_t cable; \
+    uint8_t buffer[48]; \
+    while (1) { \
+      uint16_t bytesRead = tuh_midi_stream_read(devAddr, &cable, buffer, sizeof(buffer)); \
+      if (bytesRead == 0) \
+        return; \
+      auto dev = name_.getDevFromDevAddr(devAddr); \
+      if (dev != nullptr) { \
+        dev->writeToInFIFO(cable, buffer, bytesRead); \
+      } \
+    } \
+  } \
+} \
+

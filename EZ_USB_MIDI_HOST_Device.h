@@ -13,6 +13,7 @@ BEGIN_EZ_USB_MIDI_HOST_NAMESPACE
 /// @brief This class models a connected USB MIDI device
 /// Applications normally do not instantiate this class
 /// Use the API for the EZ_USB_MIDI_HOST class instead.
+template<class settings>
 class EZ_USB_MIDI_HOST_Device {
 public:
   EZ_USB_MIDI_HOST_Device() : devAddr{0}, nInCables{0}, nOutCables{0}, onMidiInWriteFail{nullptr},
@@ -108,7 +109,7 @@ public:
   /// @brief Get the MIDI interface object associated with a particular virtual MIDI cable
   /// @param cable the virtual MIDI cable
   /// @return a reference to the MIDI interface object
-  MIDI_NAMESPACE::MidiInterface<EZ_USB_MIDI_HOST_Transport, MidiHostSettings>& getMIDIinterface(uint8_t cable) {
+  MIDI_NAMESPACE::MidiInterface<EZ_USB_MIDI_HOST_Transport<settings>, settings>& getMIDIinterface(uint8_t cable) {
     return interfaces[cable];
   }
 
@@ -148,8 +149,8 @@ private:
   uint8_t nInCables;
   uint8_t nOutCables;
   void (*onMidiInWriteFail)(uint8_t devAddr, uint8_t cable, bool fifoOverflow);
-  EZ_USB_MIDI_HOST_Transport transports[RPPICOMIDI_TUH_MIDI_MAX_CABLES];
-  MIDI_NAMESPACE::MidiInterface<EZ_USB_MIDI_HOST_Transport, MidiHostSettings> interfaces[RPPICOMIDI_TUH_MIDI_MAX_CABLES];
+  EZ_USB_MIDI_HOST_Transport<settings> transports[RPPICOMIDI_TUH_MIDI_MAX_CABLES];
+  MIDI_NAMESPACE::MidiInterface<EZ_USB_MIDI_HOST_Transport<settings>, settings> interfaces[RPPICOMIDI_TUH_MIDI_MAX_CABLES];
 };
 
 END_EZ_USB_MIDI_HOST_NAMESPACE

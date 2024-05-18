@@ -17,6 +17,7 @@ BEGIN_EZ_USB_MIDI_HOST_NAMESPACE
 /// the required Transport class of the MIDI interface class.
 /// Applications normally do not instantiate this class
 /// Use the API for the EZ_USB_MIDI_HOST class instead.
+template<class settings>
 class EZ_USB_MIDI_HOST_Transport {
 public:
   EZ_USB_MIDI_HOST_Transport()  :

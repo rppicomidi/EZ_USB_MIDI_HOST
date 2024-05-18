@@ -42,10 +42,11 @@
 #include "pico/cyw43_arch.h"
 #endif
 
-USING_NAMESPACE_EZ_USB_MIDI_HOST
+//USING_NAMESPACE_EZ_USB_MIDI_HOST
 USING_NAMESPACE_MIDI
 
-static EZ_USB_MIDI_HOST usbhMIDI;
+RPPICOMIDI_EZ_USB_MIDI_HOST_INSTANCE(usbhMIDI, MidiHostSettings)
+//static EZ_USB_MIDI_HOST usbhMIDI;
 static uint8_t midiDevAddr = 0;
 
 /* MIDI IN MESSAGE REPORTING */
