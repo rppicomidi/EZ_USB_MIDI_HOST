@@ -284,7 +284,7 @@ void setup()
 {
   Serial1.begin(115200);
 
-  delay(2000);   // wait for serial port
+  while(!Serial1);   // wait for serial port
   pinMode(LED_BUILTIN, OUTPUT);
   usbhMIDI.begin(&USBHost, 0, onMIDIconnect, onMIDIdisconnect);
   Serial1.println("TinyUSB MIDI Host Example");

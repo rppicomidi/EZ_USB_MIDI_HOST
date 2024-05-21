@@ -317,6 +317,10 @@ void core1_main() {
 int main() {
 
     bi_decl(bi_program_description("A USB MIDI host example."));
+    // default 125MHz is not appropreate. Sysclock should be multiple of 12MHz.
+    set_sys_clock_khz(120000, true);
+
+    sleep_ms(10);
     board_init();
     multicore_reset_core1();
     // all USB task run in core1
@@ -332,8 +336,8 @@ int main() {
         printf("WiFi init failed");
         return -1;
     }
+#endif
     core0_booting = false;
-#endif    
     while (1) {
         // Handle any incoming data; triggers MIDI IN callbacks
         usbhMIDI.readAll();

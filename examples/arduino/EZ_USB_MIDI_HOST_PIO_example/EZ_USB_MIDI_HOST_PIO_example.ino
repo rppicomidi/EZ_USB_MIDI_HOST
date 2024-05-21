@@ -42,10 +42,11 @@
 // USB Host object
 Adafruit_USBH_Host USBHost;
 
-USING_NAMESPACE_EZ_USB_MIDI_HOST
 USING_NAMESPACE_MIDI
+USING_NAMESPACE_EZ_USB_MIDI_HOST
 
-static EZ_USB_MIDI_HOST usbhMIDI;
+RPPICOMIDI_EZ_USB_MIDI_HOST_INSTANCE(usbhMIDI, MidiHostSettingsDefault)
+
 static uint8_t midiDevAddr = 0;
 
 static bool core0_booting = true;
@@ -284,8 +285,8 @@ static void sendNextNote()
 
 // core1's setup
 void setup1() {
-    delay(2000);   // wait for native usb
-    Serial.println("Core1 setup to run TinyUSB host with pio-usb");
+    while(!Serial);   // wait for native usb
+    Serial.println("Core1 setup to run TinyUSB host with pio-usb\r\n");
 
     // Check for CPU frequency, must be multiple of 120Mhz for bit-banging USB
     uint32_t cpu_hz = clock_get_hz(clk_sys);
@@ -306,11 +307,10 @@ void setup1() {
  #endif /* ARDUINO_RASPBERRY_PI_PICO_W */
  
     USBHost.configure_pio_usb(1, &pio_cfg);
-
     // run host stack on controller (rhport) 1
     // Note: For rp2040 pico-pio-usb, calling USBHost.begin() on core1 will have most of the
-    // host bit-banging processing works done in core1 to free up core0 for other works
-    USBHost.begin(1);
+    // host bit-banging processing work done in core1 to free up core0 for other work
+    usbhMIDI.begin(&USBHost, 1, onMIDIconnect, onMIDIdisconnect);
     core1_booting = false;
     while(core0_booting) ;
 }
@@ -325,11 +325,9 @@ void setup()
 {
     Serial.begin(115200);
 
-    delay(2000);   // wait for serial port
+    while(!Serial);   // wait for serial port
     pinMode(LED_BUILTIN, OUTPUT);
-    Serial.println("TinyUSB MIDI Host Example");
-    usbhMIDI.setAppOnConnect(onMIDIconnect);
-    usbhMIDI.setAppOnDisconnect(onMIDIdisconnect);
+    Serial.println("EZ USB MIDI HOST PIO Example for Arduino\r\n");
     core0_booting = false;
     while(core1_booting) ;
 }
