@@ -17,6 +17,9 @@ not benefit from it.
 The code in this project should run on any TinyUSB supported
 processor that runs the USB MIDI Host Library.
 
+This documentation is for version 2.0.0 of this library or
+later. The previous versions used a different API.
+
 # Adding this library to your project
 ## C/C++ Programs
 First, you must install the [usb_midi_host](https://github.com/rppicomidi/usb_midi_host) library in your file
@@ -63,13 +66,13 @@ MIDI devices can be connected and disconnected while the program is running.
 To make this complexity more manageable, this library provides the
 following software components layered as follows:
 
-|              |                           |
-| ------------ | ------------------------- |
-|              | application               |
+|              |                            |
+| ------------ | -------------------------- |
+|              | application                |
 |              | EZ_USB_MIDI_HOST           |
 |              | EZ_USB_MIDI_HOST_Device    |
 | MIDI Library | EZ_USB_MIDI_HOST_Transport |
-| TinyUSB      | usb_midi_host_app_driver  |
+| TinyUSB      | usb_midi_host_app_driver   |
 
 The application interacts with a single `EZ_USB_MIDI_HOST` object.
 The `EZ_USB_MIDI_HOST` object has as many `EZ_USB_MIDI_HOST_Device`
@@ -79,7 +82,15 @@ a `EZ_USB_MIDI_HOST_Transport` interface. Each`EZ_USB_MIDI_HOST_Transport` objec
 `TinyUSB` library supplemented by the `usb_midi_host_app_driver`.
 
 # Writing Applications
-In practice, the code for main loop's body looks like this
+To create an instance of the EZ_USB_MIDI_HOST class for your
+program, you should use the `RPPICOMIDI_EZ_USB_MIDI_HOST_INSTANCE()`
+macro. The first argument is name of the EZ_USB_MIDI_HOST object
+the macro defines. The second argument is the settings class to
+apply to the object. See the CONFIGURATION and IMPLEMENTATION DETAILS
+section for more information.
+
+In practice, assuming the name of the EZ_USB_MIDI_HOST instance
+the code creates is `usbhMIDI`, then main loop's body looks like this
 ```
         // Update the USB Host
         USBHost.task(); // Arduino, comment out or delete for C++
@@ -108,9 +119,8 @@ implement the `DisconnectCallback` function to unregister the MIDI IN
 callbacks associated with the disconnected device address and
 to forget the device address of the unplugged MIDI device.
 
-All the `Setup()` function of the main application has to do is register
-the ConnectCallback, DisconnectCallback, and call the library's `begin()`
-function.
+All the `Setup()` function of the main application has to do is call the library's `begin()` function to specify the USB Host port to use, and
+the pointers to the `ConnectCallback` and `DisconnectCallback` functions
 
 # EXAMPLE PROGRAMS
 
@@ -154,5 +164,39 @@ of the usb_midi_host
 for setting up the board parameters. Note that native rp2040 hardware example
 directs Serial output to the Serial1 port, which is rp2040 UART0.
 
-# CONFIGURATION and IMPLEMENTATION DETAILS
-See the usb_midi_host library [README](https://github.com/rppicomidi/usb_midi_host/blob/main/README.md).
+# LIBRARY CONFIGURATION and IMPLEMENTATION DETAILS
+Because the Arduino IDE's build system does not support configuring
+libraries using preprocessor macros and constants defined in files
+in the sketch directory, version 2.0.0 and later of this library
+redefines the API for using this class to make it possible for
+applications to configure the library without editing the library
+configuration files directly.
+
+The EZ_USB_MIDI_HOST class, as well as the classes it uses, are
+implemented as template classes that depend on a settings class. The
+settings class must be the `MidiHostSettingsDefault` struct defined in `EZ_USB_MIDI_HOST_Config.h` or a subclass of it. The
+`MidiHostSettingsDefault` struct is itself a subclass of the Arduino
+MIDI Library's `DefaultSettings` class. If you need to change one of
+the settings in EZ_USB_MIDI_HOST` or in the Arduino MIDI Library, then
+please define a subclass of `MidiHostSettingsDefault` and pass this
+class as an argument to the `RPPICOMIDI_EZ_USB_MIDI_HOST_INSTANCE`
+macro. You may overload any field the settings structure.
+
+For example, let's say that your application needs to send and
+receive System Exclusive messages that are 146 bytes long (excluding
+the 0xF0 start of SysEx message and 0xF7 end of SysEx message bytes).
+The default settings in `MidiHostSettingsDefault` assume that the
+longest SysEx message is 128 bytes long. Your application would
+have to create a new settings class to make buffers large enough
+to for the underlying usb_midi_host library to handle the longer
+SysEx messages, and it would have to tell the Arduino MIDI library
+that it needs to handle 128 bytes SysEx payloads.
+
+```
+struct MidiHostSettingsDefault : public MIDI_NAMESPACE::DefaultSettings
+{
+    static const unsigned SysExMaxSize = 146; // for MIDI Library
+    static const unsigned MidiRxBufsize = RPPICOMIDI_EZ_USB_MIDI_HOST_GET_BUFSIZE(SysExMaxSize);
+    static const unsigned MidiTxBufsize = RPPICOMIDI_EZ_USB_MIDI_HOST_GET_BUFSIZE(SysExMaxSize);
+};
+```
