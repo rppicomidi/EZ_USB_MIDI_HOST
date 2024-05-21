@@ -175,7 +175,7 @@ public:
   /// @param hasMessageBitmap the value returned by readAll()
   /// @return true if there is a message waiting on the cable, false otherwise
   bool isMessageAvailableOnCable(uint8_t cable, uint16_t hasMessageBitmap) {
-    return cable < RPPICOMIDI_TUH_MIDI_MAX_CABLES && (hasMessageBitmap & (1 << cable)) != 0;
+    return cable < settings::MaxCables && (hasMessageBitmap & (1 << cable)) != 0;
   }
 
   /// @brief Get access to the EZ_USB_MIDI_HOST_Device object associated with the devAddr
@@ -202,7 +202,7 @@ public:
   /// or nullptr if no such interface exists (if, for example, the device was unplugged)
   MIDI_NAMESPACE::MidiInterface<EZ_USB_MIDI_HOST_Transport<settings>, settings>* getInterfaceFromDeviceAndCable(uint8_t devAddr, uint8_t cable) {
     auto dev = getDevFromDevAddr(devAddr);
-    if (dev != nullptr && cable < RPPICOMIDI_TUH_MIDI_MAX_CABLES && (cable < dev->getNumInCables() || cable < dev->getNumOutCables()))
+    if (dev != nullptr && cable < settings::MaxCables && (cable < dev->getNumInCables() || cable < dev->getNumOutCables()))
       return  &dev->getMIDIinterface(cable);
     return nullptr;
   }
