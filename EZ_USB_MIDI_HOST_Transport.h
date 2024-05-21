@@ -7,7 +7,6 @@
 #endif
 #include "midi_Namespace.h"
 #include "EZ_USB_MIDI_HOST_namespace.h"
-#include "EZ_USB_MIDI_HOST_Config.h"
 
 #include "usb_midi_host.h"
 
@@ -29,7 +28,7 @@ public:
     inFIFOoverflow(false),
     outFIFOoverflow(false) {
       // The FIFO is not overwritable
-      tu_fifo_config(&inFIFO, &inBuffer, RPPICOMIDI_TUH_MIDI_IN_CABLE_BUF_SZ, sizeof(uint8_t), false);
+      tu_fifo_config(&inFIFO, &inBuffer, settings::MidiRxBufsize, sizeof(uint8_t), false);
       tu_fifo_clear(&inFIFO);
     }
 
@@ -112,16 +111,13 @@ public:
   static const bool thruActivated = false;
 
 private:
-  // delete copy constructor and assignment operator
-  //EZ_USB_MIDI_HOST_Transport(const EZ_USB_MIDI_HOST_Transport&) = delete;
-  //EZ_USB_MIDI_HOST_Transport& operator=(const EZ_USB_MIDI_HOST_Transport&) = delete;
   static uint8_t const no_cable = 16;  //!< legal MIDI cable numbers are 0-15
   uint8_t devAddr;
   uint8_t cableNum;
   bool hasMIDI_IN;
   bool hasMIDI_OUT;
 
-  uint8_t inBuffer[RPPICOMIDI_TUH_MIDI_IN_CABLE_BUF_SZ];
+  uint8_t inBuffer[settings::MidiRxBufsize];
   tu_fifo_t inFIFO;
   bool inFIFOunderflow;
   bool inFIFOoverflow;

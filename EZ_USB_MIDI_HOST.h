@@ -1,5 +1,5 @@
 /*
- * @file EZ_USB_MIDI_HOST.cpp
+ * @file EZ_USB_MIDI_HOST.h
  * @brief Arduino MIDI Library compatible wrapper for usb_midi_host
  *        application driver
  *
@@ -42,6 +42,11 @@
  */
 
 #pragma once
+extern "C" void tuh_midi_mount_cb(uint8_t devAddr, uint8_t inEP, uint8_t outEP, uint8_t nInCables, uint16_t nOutCables);
+extern "C" void tuh_midi_umount_cb(uint8_t devAddr, uint8_t unused);
+extern "C" void tuh_midi_rx_cb(uint8_t devAddr, uint32_t numPackets);
+extern "C" void rppicomidi_ez_usb_midi_host_set_cbs(void (*mount_cb)(uint8_t devAddr, uint8_t nInCables, uint16_t nOutCables, void*),
+					 void (*umount_cb)(uint8_t devAddr, void*), void (*rx_cb)(uint8_t devAddr, uint32_t numPackets, void*), void*);
 /// See the comments in EZ_USB_MIDI_HOST_Config.h for
 /// instructions how to tailor the memory requirements of
 /// this library to your application.
@@ -52,7 +57,6 @@
 #include "EZ_USB_MIDI_HOST_namespace.h"
 
 BEGIN_EZ_USB_MIDI_HOST_NAMESPACE
-
 
 using ConnectCallback    = void (*)(uint8_t, uint8_t, uint8_t);
 using DisconnectCallback = void (*)(uint8_t);
@@ -69,12 +73,28 @@ template<class settings>
 class EZ_USB_MIDI_HOST {
 public:
   EZ_USB_MIDI_HOST() : appOnConnect{nullptr}, appOnDisconnect{nullptr} {
-        //instance = this;
+        rppicomidi_ez_usb_midi_host_set_cbs(onConnect, onDisconnect, onRx, reinterpret_cast<void*>(this));
         for (uint8_t idx = 0; idx < CFG_TUH_DEVICE_MAX; idx++) devAddr2DeviceMap[idx] = nullptr;
     }
-
+  ~EZ_USB_MIDI_HOST() = default;
   EZ_USB_MIDI_HOST(EZ_USB_MIDI_HOST const &) = delete;
   void operator=(EZ_USB_MIDI_HOST const &) = delete;
+
+#ifdef ADAFRUIT_USBH_HOST_H_
+  void begin(Adafruit_USBH_Host* usbHost, uint8_t rhPort, ConnectCallback cfptr, DisconnectCallback dfptr) {
+    setAppOnConnect(cfptr);
+    setAppOnDisconnect(dfptr);
+    tuh_midih_define_limits(settings::MidiRxBufsize, settings::MidiTxBufsize, settings::MaxCables);
+    usbHost->begin(rhPort);
+  }
+#else
+  void begin(uint8_t rhPort, ConnectCallback cfptr, DisconnectCallback dfptr) {
+    setAppOnConnect(cfptr);
+    setAppOnDisconnect(dfptr);
+    tuh_midih_define_limits(settings::MidiRxBufsize, settings::MidiTxBufsize, settings::MaxCables);
+    tuh_init(rhPort);
+  }
+#endif
 
   /// @brief test if a MIDI device with the given devAddr is connected
   /// @param devAddr the USB device address of the device to test
@@ -191,24 +211,43 @@ public:
   // They are declared public because the tuh_midi_*cb() callbacks are not
   // associated with any object and this class is accessed via the getInstance()
   // function.
-  void onConnect(uint8_t devAddr, uint8_t nInCables, uint8_t nOutCables) {
+  static void onConnect(uint8_t devAddr, uint8_t nInCables, uint16_t nOutCables, void* inst) {
+    auto me = reinterpret_cast<EZ_USB_MIDI_HOST<settings>*>(inst);
     // try to allocate a EZ_USB_MIDI_HOST_Device object for the connected device
     uint8_t idx = 0;
-    for (; idx < RPPICOMIDI_TUH_MIDI_MAX_DEV && devAddr2DeviceMap[idx] != nullptr; idx++) {}
-    if (idx < RPPICOMIDI_TUH_MIDI_MAX_DEV && devAddr2DeviceMap[idx] == nullptr) {
-      devAddr2DeviceMap[idx] = devices + idx;
-      devAddr2DeviceMap[idx]->onConnect(devAddr, nInCables, nOutCables);
-      if (appOnConnect) appOnConnect(devAddr, nInCables, nOutCables);
+    for (; idx < RPPICOMIDI_TUH_MIDI_MAX_DEV && me->devAddr2DeviceMap[idx] != nullptr; idx++) {}
+    if (idx < RPPICOMIDI_TUH_MIDI_MAX_DEV && me->devAddr2DeviceMap[idx] == nullptr) {
+      me->devAddr2DeviceMap[idx] = me->devices + idx;
+      me->devAddr2DeviceMap[idx]->onConnect(devAddr, nInCables, nOutCables);
+      if (me->appOnConnect) me->appOnConnect(devAddr, nInCables, nOutCables);
     }
   }
-  void onDisconnect(uint8_t devAddr) { 
+  static void onDisconnect(uint8_t devAddr, void* inst) {
+    auto me = reinterpret_cast<EZ_USB_MIDI_HOST<settings>*>(inst);
     // find the EZ_USB_MIDI_HOST_Device object allocated for this device
-      auto ptr = getDevFromDevAddr(devAddr);
+      auto ptr = me->getDevFromDevAddr(devAddr);
       if (ptr != nullptr) {
         ptr->onDisconnect(devAddr);
-        if (appOnDisconnect)
-           appOnDisconnect(devAddr);
+        if (me->appOnDisconnect)
+           me->appOnDisconnect(devAddr);
       }
+  }
+  static void onRx(uint8_t devAddr, uint32_t numPackets, void* inst) {
+    auto me = reinterpret_cast<EZ_USB_MIDI_HOST<settings>*>(inst);
+    if (numPackets != 0)
+    {
+      uint8_t cable;
+      uint8_t buffer[48];
+      while (1) {
+        uint16_t bytesRead = tuh_midi_stream_read(devAddr, &cable, buffer, sizeof(buffer));
+        if (bytesRead == 0)
+          return;
+        auto dev = me->getDevFromDevAddr(devAddr);
+        if (dev != nullptr) {
+          dev->writeToInFIFO(cable, buffer, bytesRead);
+        }
+      }
+    }
   }
   //static EZ_USB_MIDI_HOST<settings>* getInstance() {return instance; }
 private:
@@ -234,23 +273,24 @@ private:
 END_EZ_USB_MIDI_HOST_NAMESPACE
 
 #define RPPICOMIDI_EZ_USB_MIDI_HOST_INSTANCE(name_, settings) \
-USING_NAMESPACE_EZ_USB_MIDI_HOST \
-\
-    static EZ_USB_MIDI_HOST<settings> name_; \
-void tuh_midi_mount_cb(uint8_t devAddr, uint8_t inEP, uint8_t outEP, uint8_t nInCables, uint16_t nOutCables) \
+    static EZ_USB_MIDI_HOST<settings> name_;
+
+#if 0
+
+extern "C" void tuh_midi_mount_cb(uint8_t devAddr, uint8_t inEP, uint8_t outEP, uint8_t nInCables, uint16_t nOutCables) \
 { \
   (void)inEP; \
   (void)outEP; \
   name_.onConnect(devAddr, nInCables, nOutCables); \
 } \
 \
-void tuh_midi_umount_cb(uint8_t devAddr, uint8_t unused) \
+extern "C" void tuh_midi_umount_cb(uint8_t devAddr, uint8_t unused) \
 { \
   (void)unused; \
   name_.onDisconnect(devAddr); \
 } \
 \
-void tuh_midi_rx_cb(uint8_t devAddr, uint32_t numPackets) \
+extern "C" void tuh_midi_rx_cb(uint8_t devAddr, uint32_t numPackets) \
 { \
   if (numPackets != 0) \
   { \
@@ -267,4 +307,6 @@ void tuh_midi_rx_cb(uint8_t devAddr, uint32_t numPackets) \
     } \
   } \
 } \
+
+#endif
 

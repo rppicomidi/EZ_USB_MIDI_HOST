@@ -44,14 +44,13 @@
 #include "pico/cyw43_arch.h"
 #endif
 
-USING_NAMESPACE_EZ_USB_MIDI_HOST
 USING_NAMESPACE_MIDI
+RPPICOMIDI_EZ_USB_MIDI_HOST_INSTANCE(usbhMIDI, MidiHostSettingsDefault)
 // Because the PIO USB code runs in core 1
 // and USB MIDI OUT sends are triggered on core 0,
 // need to synchronize core startup
 static volatile bool core1_booting = true;
 static volatile bool core0_booting = true;
-static EZ_USB_MIDI_HOST usbhMIDI;
 static uint8_t midiDevAddr = 0;
 
 /* MIDI IN MESSAGE REPORTING */
@@ -306,7 +305,7 @@ void core1_main() {
     pio_cfg.pio_tx_num = 1;
     tuh_configure(BOARD_TUH_RHPORT, TUH_CFGID_RPI_PIO_USB_CONFIGURATION, &pio_cfg);
 
-    tuh_init(BOARD_TUH_RHPORT);
+    usbhMIDI.begin(BOARD_TUH_RHPORT, onMIDIconnect, onMIDIdisconnect);
     core1_booting = false;
     while(core0_booting) {
     }
@@ -317,8 +316,6 @@ void core1_main() {
 int main() {
 
     bi_decl(bi_program_description("A USB MIDI host example."));
-    usbhMIDI.setAppOnConnect(onMIDIconnect);
-    usbhMIDI.setAppOnDisconnect(onMIDIdisconnect);
     board_init();
     multicore_reset_core1();
     // all USB task run in core1

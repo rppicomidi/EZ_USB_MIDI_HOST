@@ -43,11 +43,11 @@
 #include "EZ_USB_MIDI_HOST.h"
 // USB Host object
 Adafruit_USBH_Host USBHost;
-
-USING_NAMESPACE_EZ_USB_MIDI_HOST
 USING_NAMESPACE_MIDI
+USING_NAMESPACE_EZ_USB_MIDI_HOST
 
-static EZ_USB_MIDI_HOST usbhMIDI;
+RPPICOMIDI_EZ_USB_MIDI_HOST_INSTANCE(usbhMIDI, MidiHostSettingsDefault)
+
 static uint8_t midiDevAddr = 0;
 
 /* MIDI IN MESSAGE REPORTING */
@@ -286,10 +286,8 @@ void setup()
 
   delay(2000);   // wait for serial port
   pinMode(LED_BUILTIN, OUTPUT);
-  USBHost.begin(0);
+  usbhMIDI.begin(&USBHost, 0, onMIDIconnect, onMIDIdisconnect);
   Serial1.println("TinyUSB MIDI Host Example");
-  usbhMIDI.setAppOnConnect(onMIDIconnect);
-  usbhMIDI.setAppOnDisconnect(onMIDIdisconnect);
 }
 
 void loop() {    

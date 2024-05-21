@@ -42,11 +42,8 @@
 #include "pico/cyw43_arch.h"
 #endif
 
-//USING_NAMESPACE_EZ_USB_MIDI_HOST
-USING_NAMESPACE_MIDI
+RPPICOMIDI_EZ_USB_MIDI_HOST_INSTANCE(usbhMIDI, MidiHostSettingsDefault)
 
-RPPICOMIDI_EZ_USB_MIDI_HOST_INSTANCE(usbhMIDI, MidiHostSettings)
-//static EZ_USB_MIDI_HOST usbhMIDI;
 static uint8_t midiDevAddr = 0;
 
 /* MIDI IN MESSAGE REPORTING */
@@ -287,11 +284,9 @@ static void sendNextNote()
 int main() {
 
     bi_decl(bi_program_description("A USB MIDI host example."));
-    usbhMIDI.setAppOnConnect(onMIDIconnect);
-    usbhMIDI.setAppOnDisconnect(onMIDIdisconnect);
     board_init();
+    usbhMIDI.begin(0, onMIDIconnect, onMIDIdisconnect);
     printf("Pico MIDI Host Example\r\n");
-    tusb_init();
 #if RPPICOMIDI_PICO_W
     // The Pico W LED is attached to the CYW43 WiFi/Bluetooth module
     // Need to initialize it so the the LED blink can work

@@ -3,10 +3,7 @@
 #include "EZ_USB_MIDI_HOST_Transport.h"
 
 #include "EZ_USB_MIDI_HOST_namespace.h"
-/// See the comments in EZ_USB_MIDI_HOST_Config.h for
-/// instructions how to tailor the memory requirements of
-/// this library to your application.
-#include "EZ_USB_MIDI_HOST_Config.h"
+
 BEGIN_EZ_USB_MIDI_HOST_NAMESPACE
 
 
@@ -16,58 +13,17 @@ BEGIN_EZ_USB_MIDI_HOST_NAMESPACE
 template<class settings>
 class EZ_USB_MIDI_HOST_Device {
 public:
-  EZ_USB_MIDI_HOST_Device() : devAddr{0}, nInCables{0}, nOutCables{0}, onMidiInWriteFail{nullptr},
-    // Need to statically construct the interfaces array which is configurable
-    // in length from 1 to 16. Sorry the following lines in the initialization
-    // list is ugly
-    interfaces{transports[0]
-  #if RPPICOMIDI_TUH_MIDI_MAX_CABLES > 1
-    , transports[1]
-  #endif
-  #if RPPICOMIDI_TUH_MIDI_MAX_CABLES > 2
-    , transports[2]
-  #endif
-  #if RPPICOMIDI_TUH_MIDI_MAX_CABLES > 3
-    , transports[3]
-  #endif
-  #if RPPICOMIDI_TUH_MIDI_MAX_CABLES > 4
-    , transports[4]
-  #endif
-  #if RPPICOMIDI_TUH_MIDI_MAX_CABLES > 5
-    , transports[5]
-  #endif
-  #if RPPICOMIDI_TUH_MIDI_MAX_CABLES > 6
-    , transports[6]
-  #endif
-  #if RPPICOMIDI_TUH_MIDI_MAX_CABLES > 7
-    , transports[7]
-  #endif
-  #if RPPICOMIDI_TUH_MIDI_MAX_CABLES > 8
-    , transports[8]
-  #endif
-  #if RPPICOMIDI_TUH_MIDI_MAX_CABLES > 9
-    , transports[9]
-  #endif
-  #if RPPICOMIDI_TUH_MIDI_MAX_CABLES > 10
-    , transports[10]
-  #endif
-  #if RPPICOMIDI_TUH_MIDI_MAX_CABLES > 11
-    , transports[11]
-  #endif
-  #if RPPICOMIDI_TUH_MIDI_MAX_CABLES > 12
-    , transports[12]
-  #endif
-  #if RPPICOMIDI_TUH_MIDI_MAX_CABLES > 13
-    , transports[13]
-  #endif
-  #if RPPICOMIDI_TUH_MIDI_MAX_CABLES > 14
-    , transports[14]
-  #endif
-  #if RPPICOMIDI_TUH_MIDI_MAX_CABLES > 15
-    , transports[15]
-  #endif
-  } {
+  EZ_USB_MIDI_HOST_Device() : devAddr{0}, nInCables{0}, nOutCables{0}, onMidiInWriteFail{nullptr} {
     clearTransports();
+    for (unsigned idx=0;idx < settings::MaxCables; idx++) {
+        interfaces[idx] = new MIDI_NAMESPACE::MidiInterface<EZ_USB_MIDI_HOST_Transport<settings>, settings>(transports[idx]);
+    }
+  }
+
+  ~EZ_USB_MIDI_HOST_Device() {
+    for (unsigned idx=0;idx < settings::MaxCables; idx++) {
+        delete interfaces[idx];
+    }
   }
 
   /// Call this function to configure the MIDI interface objects
@@ -81,7 +37,7 @@ public:
         uint8_t maxCables = nInCables > nOutCables ? nInCables : nOutCables;
         for (uint8_t idx = 0; idx < maxCables; idx++) {
             transports[idx].setConfiguration(devAddr, idx, idx < nInCables, idx < nOutCables);
-            interfaces[idx].begin(MIDI_CHANNEL_OMNI);
+            interfaces[idx]->begin(MIDI_CHANNEL_OMNI);
         }
     }
   }
@@ -110,7 +66,7 @@ public:
   /// @param cable the virtual MIDI cable
   /// @return a reference to the MIDI interface object
   MIDI_NAMESPACE::MidiInterface<EZ_USB_MIDI_HOST_Transport<settings>, settings>& getMIDIinterface(uint8_t cable) {
-    return interfaces[cable];
+    return *interfaces[cable];
   }
 
   /// @brief Enqueue message bytes to MIDI IN FIFO of a particular transport
@@ -141,7 +97,7 @@ public:
   }
 private:
   void clearTransports() {
-    for (uint8_t idx = 0; idx < RPPICOMIDI_TUH_MIDI_MAX_CABLES; idx++) {
+    for (uint8_t idx = 0; idx < settings::MaxCables; idx++) {
         transports[idx].end();
     }
   }
@@ -149,8 +105,8 @@ private:
   uint8_t nInCables;
   uint8_t nOutCables;
   void (*onMidiInWriteFail)(uint8_t devAddr, uint8_t cable, bool fifoOverflow);
-  EZ_USB_MIDI_HOST_Transport<settings> transports[RPPICOMIDI_TUH_MIDI_MAX_CABLES];
-  MIDI_NAMESPACE::MidiInterface<EZ_USB_MIDI_HOST_Transport<settings>, settings> interfaces[RPPICOMIDI_TUH_MIDI_MAX_CABLES];
+  EZ_USB_MIDI_HOST_Transport<settings> transports[settings::MaxCables];
+  MIDI_NAMESPACE::MidiInterface<EZ_USB_MIDI_HOST_Transport<settings>, settings>* interfaces[settings::MaxCables];
 };
 
 END_EZ_USB_MIDI_HOST_NAMESPACE
