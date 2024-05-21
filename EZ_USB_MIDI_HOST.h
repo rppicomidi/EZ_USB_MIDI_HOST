@@ -12,15 +12,19 @@
  * receive MIDI messages between the application and the device.
  *
  * Most applications should only instantiate the EZ_USB_MIDI_HOST
- * class by calling EZ_USB_MIDI_HOST::instance(); e.g.
- *   auto usbhMIDI = EZ_USB_MIDI_HOST::instance();
+ * class by using the RPPICOMIDI_EZ_USB_MIDI_HOST_INSTANCE() macro.
+ * For example, to instantiate the EZ_USB_MIDI_HOST object with
+ * name "usbhMIDI" using the default configuration, add the following
+ * to the application (Note the lack of semicolon after the macro):
  *
- * Please see the CONFIGURATION section below to allow your application
- * to tailor the memory utilization of this class
+ * RPPICOMIDI_EZ_USB_MIDI_HOST_INSTANCE(usbhMIDI, MidiHostSettingsDefault)
+ *
+ * If you need to customize the settings, make a subclass of the
+ * MidiHostSettingsDefault class and pass the name of your new class instead.
  *
  * The MIT License (MIT)
  *
- * Copyright (c) 2023 rppicomidi
+ * Copyright (c) 2024 rppicomidi
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -42,14 +46,10 @@
  */
 
 #pragma once
-extern "C" void tuh_midi_mount_cb(uint8_t devAddr, uint8_t inEP, uint8_t outEP, uint8_t nInCables, uint16_t nOutCables);
-extern "C" void tuh_midi_umount_cb(uint8_t devAddr, uint8_t unused);
-extern "C" void tuh_midi_rx_cb(uint8_t devAddr, uint32_t numPackets);
+
 extern "C" void rppicomidi_ez_usb_midi_host_set_cbs(void (*mount_cb)(uint8_t devAddr, uint8_t nInCables, uint16_t nOutCables, void*),
 					 void (*umount_cb)(uint8_t devAddr, void*), void (*rx_cb)(uint8_t devAddr, uint32_t numPackets, void*), void*);
-/// See the comments in EZ_USB_MIDI_HOST_Config.h for
-/// instructions how to tailor the memory requirements of
-/// this library to your application.
+
 #include "EZ_USB_MIDI_HOST_Config.h"
 
 #include "EZ_USB_MIDI_HOST_Device.h"
@@ -255,7 +255,6 @@ public:
       }
     }
   }
-  //static EZ_USB_MIDI_HOST<settings>* getInstance() {return instance; }
 private:
   EZ_USB_MIDI_HOST_Device<settings> devices[RPPICOMIDI_TUH_MIDI_MAX_DEV];
   ConnectCallback appOnConnect;
@@ -265,54 +264,10 @@ private:
   // has been connected or nullptr if not.
   // The problem this solves is RPPICOMIDI_TUH_MIDI_MAX_DEV < CFG_TUH_DEVICE_MAX
   EZ_USB_MIDI_HOST_Device<settings>* devAddr2DeviceMap[CFG_TUH_DEVICE_MAX];
-
-  /// instance is the unique object that is created for this class.
-  /// It does not use the the well known thread safe singleton pattern
-  /// (e.g., https://stackoverflow.com/questions/1008019/how-do-you-implement-the-singleton-design-pattern)
-  /// because this class is designed to be instantiated as a file static 
-  /// object. Because the object is created before main() starts, there
-  /// is no race condition danger. It allows you to access class methods
-  /// with simple dot notation instead of classname::instance() symantics.
-  //static EZ_USB_MIDI_HOST<settings>* instance;
 };
 
 END_EZ_USB_MIDI_HOST_NAMESPACE
 
 #define RPPICOMIDI_EZ_USB_MIDI_HOST_INSTANCE(name_, settings) \
     static EZ_USB_MIDI_HOST<settings> name_;
-
-#if 0
-
-extern "C" void tuh_midi_mount_cb(uint8_t devAddr, uint8_t inEP, uint8_t outEP, uint8_t nInCables, uint16_t nOutCables) \
-{ \
-  (void)inEP; \
-  (void)outEP; \
-  name_.onConnect(devAddr, nInCables, nOutCables); \
-} \
-\
-extern "C" void tuh_midi_umount_cb(uint8_t devAddr, uint8_t unused) \
-{ \
-  (void)unused; \
-  name_.onDisconnect(devAddr); \
-} \
-\
-extern "C" void tuh_midi_rx_cb(uint8_t devAddr, uint32_t numPackets) \
-{ \
-  if (numPackets != 0) \
-  { \
-    uint8_t cable; \
-    uint8_t buffer[48]; \
-    while (1) { \
-      uint16_t bytesRead = tuh_midi_stream_read(devAddr, &cable, buffer, sizeof(buffer)); \
-      if (bytesRead == 0) \
-        return; \
-      auto dev = name_.getDevFromDevAddr(devAddr); \
-      if (dev != nullptr) { \
-        dev->writeToInFIFO(cable, buffer, bytesRead); \
-      } \
-    } \
-  } \
-} \
-
-#endif
 
