@@ -45,43 +45,11 @@
 #include "midi_Settings.h"
 #include "midi_Namespace.h"
 #include "EZ_USB_MIDI_HOST_namespace.h"
-
 /// Default maximum number of connected MIDI devices supported
 #define RPPICOMIDI_TUH_MIDI_MAX_DEV_DEFAULT CFG_TUH_DEVICE_MAX
 
 #ifndef RPPICOMIDI_TUH_MIDI_MAX_DEV
 #define RPPICOMIDI_TUH_MIDI_MAX_DEV RPPICOMIDI_TUH_MIDI_MAX_DEV_DEFAULT
-#endif
-
-/// Default maximum number of virtual MIDI cables supported
-/// per connected MIDI device. All virtual cables from 0 to
-/// (RPPICOMIDI_TUH_MIDI_MAX_CABLES - 1) will be mapped available
-/// for communication via the API. Data from a virtual cable that
-/// is not mapped is discarded when received. Data sent to an
-/// unmapped virtual cable is discarded when an application
-/// attempts to write it.
-#define RPPICOMIDI_TUH_MIDI_MAX_CABLES_DEFAULT 16
-
-#ifndef RPPICOMIDI_TUH_MIDI_MAX_CABLES
-#define RPPICOMIDI_TUH_MIDI_MAX_CABLES RPPICOMIDI_TUH_MIDI_MAX_CABLES_DEFAULT
-#endif
-
-/// Virtual cable MIDI IN buffer size.
-/// When this code's callback function reads a USB MIDI packet
-/// from the usb_midi_hostdriver, it extracts the data it receives
-/// to a buffer assigned to each device's virtual cable. This value
-/// defines how many bytes are stored for each virtual cable. 
-/// Do not define this value to anything larger than 32K bytes
-/// because the receive queue code cannot handle buffers larger
-/// than 32K bytes
-#define RPPICOMIDI_TUH_MIDI_IN_BUF_SZ_DEFAULT 128
-
-#ifndef RPPICOMIDI_TUH_MIDI_IN_CABLE_BUF_SZ
-#define RPPICOMIDI_TUH_MIDI_IN_CABLE_BUF_SZ RPPICOMIDI_TUH_MIDI_IN_BUF_SZ_DEFAULT
-#endif
-
-#ifndef RPPICOMIDI_TUH_MIDI_MAX_SYSEX
-#define RPPICOMIDI_TUH_MIDI_MAX_SYSEX 128
 #endif
 
 /// Because the MIDI Library send() and sendSysEx() libraries
@@ -94,7 +62,7 @@
 /// maximum size system exclusive message. The buffer must be a
 /// multiple of 4 bytes. The sysex buffer from messages may not
 /// have the F0 and F7 bytes, but the USB packet needs to send them.
-#define CFG_TUH_MIDI_TX_BUFSIZE  (((((RPPICOMIDI_TUH_MIDI_MAX_SYSEX) + 2) / 3) + 1) * 4)
+#define RPPICOMIDI_EZ_USB_MIDI_HOST_GET_BUFSIZE(MaxSysExPayload)  (((((MaxSysExPayload) + 2) / 3) + 1) * 4)
 BEGIN_EZ_USB_MIDI_HOST_NAMESPACE
 /// This structure contains the default settings class
 /// for the EZ_USB_MIDI_HOST class and the Arduino MIDI class.
@@ -115,9 +83,20 @@ struct MidiHostSettingsDefault : public MIDI_NAMESPACE::DefaultSettings
     /// be called recursively RPPICOMIDI_TUH_MIDI_MAX_SYSEX times, which
     /// will likely cause issues.
     static const bool Use1ByteParsing = true;
-    static const unsigned SysExMaxSize = RPPICOMIDI_TUH_MIDI_MAX_SYSEX;
-    static const unsigned MidiRxBufsize = RPPICOMIDI_TUH_MIDI_IN_BUF_SZ_DEFAULT;
-    static const unsigned MidiTxBufsize = CFG_TUH_MIDI_TX_BUFSIZE;
-    static const unsigned MaxCables = RPPICOMIDI_TUH_MIDI_MAX_CABLES_DEFAULT;
+
+    /// The maximum length of a System Exclusive message payload (excluding 0xF0 and 0xF7 bytes)
+    static const unsigned SysExMaxSize = 128;
+    /// The buffer size for receiving and transmitting messages should be large enough to
+    /// hold and entire system exclusive message. If your attached devices do not use
+    /// system exclusive messages, you can save system memory by overriding the bufsize
+    /// values in a subclass of this struct, but you should make the buffers no shorter than
+    /// 64 bytes each.
+    static const unsigned MidiRxBufsize = RPPICOMIDI_EZ_USB_MIDI_HOST_GET_BUFSIZE(SysExMaxSize);
+    static const unsigned MidiTxBufsize = RPPICOMIDI_EZ_USB_MIDI_HOST_GET_BUFSIZE(SysExMaxSize);
+    /// USB MIDI packets can be routed to one of up to 16 virtual cables. Each virtual cable
+    /// consumes a MIDI Library transport class object. Most MIDI devices have fewer than 16
+    /// virtual cables. You can save memory by overriding this value in a new subclass of
+    /// this struct, but MaxCables must be at least 1.
+    static const unsigned MaxCables = 16;
 };
 END_EZ_USB_MIDI_HOST_NAMESPACE
