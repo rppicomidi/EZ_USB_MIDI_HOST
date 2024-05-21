@@ -74,7 +74,8 @@ class EZ_USB_MIDI_HOST {
 public:
   EZ_USB_MIDI_HOST() : appOnConnect{nullptr}, appOnDisconnect{nullptr} {
         rppicomidi_ez_usb_midi_host_set_cbs(onConnect, onDisconnect, onRx, reinterpret_cast<void*>(this));
-        for (uint8_t idx = 0; idx < CFG_TUH_DEVICE_MAX; idx++) devAddr2DeviceMap[idx] = nullptr;
+        for (uint8_t idx = 0; idx < CFG_TUH_DEVICE_MAX; idx++)
+          devAddr2DeviceMap[idx] = nullptr;
     }
   ~EZ_USB_MIDI_HOST() = default;
   EZ_USB_MIDI_HOST(EZ_USB_MIDI_HOST const &) = delete;
@@ -225,12 +226,17 @@ public:
   static void onDisconnect(uint8_t devAddr, void* inst) {
     auto me = reinterpret_cast<EZ_USB_MIDI_HOST<settings>*>(inst);
     // find the EZ_USB_MIDI_HOST_Device object allocated for this device
-      auto ptr = me->getDevFromDevAddr(devAddr);
-      if (ptr != nullptr) {
-        ptr->onDisconnect(devAddr);
-        if (me->appOnDisconnect)
-           me->appOnDisconnect(devAddr);
+    auto ptr = me->getDevFromDevAddr(devAddr);
+    if (ptr != nullptr) {
+    ptr->onDisconnect(devAddr);
+    if (me->appOnDisconnect)
+      me->appOnDisconnect(devAddr);
+    uint8_t idx = 0;
+    for (; idx < RPPICOMIDI_TUH_MIDI_MAX_DEV && me->devAddr2DeviceMap[idx] != nullptr && me->devAddr2DeviceMap[idx]->getDevAddr() != devAddr; idx++) {}
+      if (idx < RPPICOMIDI_TUH_MIDI_MAX_DEV && me->devAddr2DeviceMap[idx] != nullptr && me->devAddr2DeviceMap[idx]->getDevAddr() == devAddr) {
+        me->devAddr2DeviceMap[idx] = nullptr;
       }
+    }
   }
   static void onRx(uint8_t devAddr, uint32_t numPackets, void* inst) {
     auto me = reinterpret_cast<EZ_USB_MIDI_HOST<settings>*>(inst);
