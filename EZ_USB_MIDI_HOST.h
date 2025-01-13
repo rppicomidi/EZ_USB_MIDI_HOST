@@ -187,7 +187,7 @@ public:
         return nullptr;
     uint8_t idx = 0;
     EZ_USB_MIDI_HOST_Device<settings>* ptr = nullptr;
-    for (; idx < RPPICOMIDI_TUH_MIDI_MAX_DEV && devAddr2DeviceMap[idx] != nullptr && devAddr2DeviceMap[idx]->getDevAddr() != devAddr; idx++) {}
+    for (; idx < RPPICOMIDI_TUH_MIDI_MAX_DEV && (devAddr2DeviceMap[idx] == nullptr || devAddr2DeviceMap[idx]->getDevAddr() != devAddr); idx++) {}
     if (idx < RPPICOMIDI_TUH_MIDI_MAX_DEV && devAddr2DeviceMap[idx] != nullptr && devAddr2DeviceMap[idx]->getDevAddr() == devAddr) {
       ptr = devAddr2DeviceMap[idx];
     }
@@ -232,7 +232,7 @@ public:
     if (me->appOnDisconnect)
       me->appOnDisconnect(devAddr);
     uint8_t idx = 0;
-    for (; idx < RPPICOMIDI_TUH_MIDI_MAX_DEV && me->devAddr2DeviceMap[idx] != nullptr && me->devAddr2DeviceMap[idx]->getDevAddr() != devAddr; idx++) {}
+    for (; idx < RPPICOMIDI_TUH_MIDI_MAX_DEV && (me->devAddr2DeviceMap[idx] == nullptr || me->devAddr2DeviceMap[idx]->getDevAddr() != devAddr); idx++) {}
       if (idx < RPPICOMIDI_TUH_MIDI_MAX_DEV && me->devAddr2DeviceMap[idx] != nullptr && me->devAddr2DeviceMap[idx]->getDevAddr() == devAddr) {
         me->devAddr2DeviceMap[idx] = nullptr;
       }
