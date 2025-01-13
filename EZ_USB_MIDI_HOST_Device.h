@@ -37,7 +37,7 @@ BEGIN_EZ_USB_MIDI_HOST_NAMESPACE
 template<class settings>
 class EZ_USB_MIDI_HOST_Device {
 public:
-  EZ_USB_MIDI_HOST_Device() : devAddr{0}, nInCables{0}, nOutCables{0}, onMidiInWriteFail{nullptr} {
+  EZ_USB_MIDI_HOST_Device() : devAddr{0}, nInCables{0}, nOutCables{0}, vid{0}, pid{0}, onMidiInWriteFail{nullptr} {
     clearTransports();
     for (unsigned idx=0;idx < settings::MaxCables; idx++) {
         interfaces[idx] = new MIDI_NAMESPACE::MidiInterface<EZ_USB_MIDI_HOST_Transport<settings>, settings>(transports[idx]);
@@ -57,12 +57,13 @@ public:
         devAddr = devAddr_;
         nInCables = nInCables_;
         nOutCables = nOutCables_;
-        clearTransports(); // make sure all transports are initialzed
+        clearTransports(); // make sure all transports are initialized
         uint8_t maxCables = nInCables > nOutCables ? nInCables : nOutCables;
         for (uint8_t idx = 0; idx < maxCables; idx++) {
             transports[idx].setConfiguration(devAddr, idx, idx < nInCables, idx < nOutCables);
             interfaces[idx]->begin(MIDI_CHANNEL_OMNI);
         }
+        tuh_vid_pid_get(devAddr, &vid, &pid);
     }
   }
 
@@ -119,6 +120,17 @@ public:
     if (devAddr != 0)
         tuh_midi_stream_flush(devAddr);
   }
+
+  /// @brief
+  ///
+  /// @return get Vendor ID for the connected device
+  uint16_t get_vid() { return vid; }
+
+  /// @brief
+  ///
+  /// @return get Product ID for the connected device
+  uint16_t get_pid() { return pid; }
+
 private:
   void clearTransports() {
     for (uint8_t idx = 0; idx < settings::MaxCables; idx++) {
@@ -128,6 +140,8 @@ private:
   uint8_t devAddr;
   uint8_t nInCables;
   uint8_t nOutCables;
+  uint16_t vid;
+  uint16_t pid;
   void (*onMidiInWriteFail)(uint8_t devAddr, uint8_t cable, bool fifoOverflow);
   EZ_USB_MIDI_HOST_Transport<settings> transports[settings::MaxCables];
   MIDI_NAMESPACE::MidiInterface<EZ_USB_MIDI_HOST_Transport<settings>, settings>* interfaces[settings::MaxCables];
