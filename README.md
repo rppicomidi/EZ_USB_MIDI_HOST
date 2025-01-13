@@ -130,14 +130,25 @@ See the Hardware section of the `usb_midi_host`
 for the different hardware configurations.
 
 ## Software
-Each of the 4 example program does the same thing:
+There are 3 Arduino examples and 2 C/C++ code examples in folders
+named `arduino` and `C-Code`, respectively. The examples in folders named
+`EZ_USB_MIDI_HOST_example` use the native USB host hardware. The examples
+in `EZ_USB_MIDI_HOST_PIO_example` use the PIO for the USB host hardware.
+These programs all support a single USB device either directly connected
+to the USB host port or connected to the host port through a hub. The
+program in the the `arduino/EZ_USB_MIDI_HOST_hub_example` folder uses
+the native USB host hardware and supports up to 4 (by default) devices
+connected by a hub. All programs do the same thing.
 - play a 5 note sequence on MIDI cable 0
 - print out every MIDI message it receives on cable 0.
 
-The only difference among the example programs is C/C++ vs.
-Arduino, and native USB host hardware vs. Pico_PIO_USB
-USB host hardware. 
-
+Note that the `arduino/EZ_USB_MIDI_HOST_hub_example` show the difficulty
+of using Arduino MIDI library MIDI IN read callbacks: the callbacks
+use C-style function pointers and do not provide user data. This forces
+applications that need to process data differently depending on which
+device and virtual cable sent it to write unique functions for each
+device and virtual cable. For this reason, the hub example is not
+replicated among the hardware types and the C/C++ examples.
 ### C/C++ Examples
 To build the rp2040 C/C++ examples, install the pico-sdk and all required
 libraries in your build environment.
