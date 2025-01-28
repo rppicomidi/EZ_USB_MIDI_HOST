@@ -145,20 +145,20 @@ public:
   /// @brief call the read method for every connected
   /// device's virtual MIDI IN cable. This will trigger the callback
   /// for that device.
-  /// @return a bitmap such that bit i is set if cable i has a message ready
+  /// @return the number of device/cable combinations that read() returned data
   uint16_t readAll() {
-    uint16_t hasMessageBitmap = 0;
+    uint16_t hasMessage = 0;
     for (uint8_t dev = 0; dev < RPPICOMIDI_TUH_MIDI_MAX_DEV; dev++) {
       uint8_t nCables = devices[dev].getNumInCables();
-      uint16_t mask = 1;
+      currentReadDev = devices[dev].getDevAddr();
       for (uint8_t cable = 0; cable < nCables; cable++) {
+        currentReadCable = cable;
         if (devices[dev].getMIDIinterface(cable).read()) {
-          hasMessageBitmap |= mask;
+          hasMessage++;
         }
-        mask <<= 1;
       }
     }
-    return hasMessageBitmap;
+    return hasMessage++;
   }
 
   /// Send as many pending USB MIDI packets as possible to
@@ -193,6 +193,12 @@ public:
     }
     return ptr;
   }
+
+  /// @brief  Get the current device address and cable used to call the read method from readAll()
+  ///
+  /// @param devAddr The device address from the last read call from readAll()
+  /// @param cable The cable number from the last read call from readAll()
+  void getCurrentReadDevAndCable(uint8_t& devAddr, uint8_t& cable) { devAddr = currentReadDev; cable = currentReadCable; }
 
   /// @brief get a pointer to the MIDI Interface object associated with the USB device address
   /// and MIDI virtual IN cable number
@@ -259,6 +265,8 @@ private:
   EZ_USB_MIDI_HOST_Device<settings> devices[RPPICOMIDI_TUH_MIDI_MAX_DEV];
   ConnectCallback appOnConnect;
   DisconnectCallback appOnDisconnect;
+  uint8_t currentReadDev;
+  uint8_t currentReadCable;
 
   // devAddr2DeviceMap[idx] == a pointer to an address if device idx
   // has been connected or nullptr if not.
