@@ -97,6 +97,8 @@ the code creates is `usbhMIDI`, then main loop's body looks like this
         // tuh_task(); // C++, comment out or delete for Arduino
 
         // Handle any incoming data; triggers MIDI IN callbacks
+        // The MIDI IN callbacks should call usbhMIDI.getCurrentReadDevAndCable()
+        // to know from which device the MIDI message was sent
         usbhMIDI.readAll();
     
         // Do other processing that might generate pending MIDI OUT data
@@ -111,16 +113,33 @@ the code creates is `usbhMIDI`, then main loop's body looks like this
 Note that this loop must call `usbhMIDI.writeFlushAll()` after generating
 about 16 USB MIDI packets or else the transmitter buffers will overflow.
 
-The application still has to keep track of what devices are connected.
-To do this, it should implement the `ConnectCallback` function to
-record the USB device address of the attached MIDI device and to
-register MIDI IN callbacks for the supported messages. It should also
-implement the `DisconnectCallback` function to unregister the MIDI IN
-callbacks associated with the disconnected device address and
-to forget the device address of the unplugged MIDI device.
+The library keeps track of what devices are connected. A way 
+for the application to know if a device is connected is to attempt to
+get a pointer to the device object based on one of the possible
+valid USB device addresses: 1 to `RPPICOMIDI_TUH_MIDI_MAX_DEV`,
+inclusive. For example:
+```
+    for (uint8_t midiDevAddr = 1; midiDevAddr <= RPPICOMIDI_TUH_MIDI_MAX_DEV; midiDevAddr++) {
+        auto dev = usbhMIDI.getDevFromDevAddr(midiDevAddr);
+        if (dev != nullptr) {
+            // do stuff with the connected device
+        }
+    }
+```
 
-All the `Setup()` function of the main application has to do is call the library's `begin()` function to specify the USB Host port to use, and
-the pointers to the `ConnectCallback` and `DisconnectCallback` functions
+However, the application needs to register callbacks on device connection
+and unregister them on device disconnection. The application may
+have to perform other tasks on routing and unrouting tasks on
+connect and disconnect events, too. The library supports a `ConnectCallback` function
+and a `DisconnectCallback` function to support this things.
+Note that the device is not fully disconnected until the `DisconnectCallback` returns. 
+The application can also use these callbacks to track what devices are connected.
+
+Please see the example programs for instructions on how to initialize the library
+in your application. Note that the `begin()` function will call `tuh_init()`; if
+you use this library in an application that uses the TinyUSB for purposes other
+than MIDI, please be sure not to call `tusb_init()` or `tuh_init()` functions
+directly. C++ programs should call the TinyUSB `board_init()` function before calling `begin()`.
 
 # EXAMPLE PROGRAMS
 
@@ -130,25 +149,20 @@ See the Hardware section of the `usb_midi_host`
 for the different hardware configurations.
 
 ## Software
-There are 3 Arduino examples and 2 C/C++ code examples in folders
+There are 2 Arduino examples and 2 C/C++ code examples in folders
 named `arduino` and `C-Code`, respectively. The examples in folders named
 `EZ_USB_MIDI_HOST_example` use the native USB host hardware. The examples
 in `EZ_USB_MIDI_HOST_PIO_example` use the PIO for the USB host hardware.
-These programs all support a single USB device either directly connected
-to the USB host port or connected to the host port through a hub. The
-program in the the `arduino/EZ_USB_MIDI_HOST_hub_example` folder uses
-the native USB host hardware and supports up to 4 (by default) devices
-connected by a hub. All programs do the same thing.
-- play a 5 note sequence on MIDI cable 0
-- print out every MIDI message it receives on cable 0.
+These programs all support USB MIDI devices either directly connected
+to the USB host port or connected to the host port up to 4 devices through
+a hub. All programs do the same thing.
+- play a 5 note sequence  (B-flat to D by half step) on all the highest
+  number virtual MIDI cable on all connected MIDI devices. If your MIDI
+  device has Mackie Control transport button LEDs, this will light all
+  5 transport buttons in sequence.
+- print out every MIDI message it receives on cable 0. The numbers in
+  brackets are the connected MIDI device number and the virtual cable number.
 
-Note that the `arduino/EZ_USB_MIDI_HOST_hub_example` show the difficulty
-of using Arduino MIDI library MIDI IN read callbacks: the callbacks
-use C-style function pointers and do not provide user data. This forces
-applications that need to process data differently depending on which
-device and virtual cable sent it to write unique functions for each
-device and virtual cable. For this reason, the hub example is not
-replicated among the hardware types and the C/C++ examples.
 ### C/C++ Examples
 To build the rp2040 C/C++ examples, install the pico-sdk and all required
 libraries in your build environment.
