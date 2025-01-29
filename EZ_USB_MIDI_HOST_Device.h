@@ -42,6 +42,9 @@ public:
     for (unsigned idx=0;idx < settings::MaxCables; idx++) {
         interfaces[idx] = new MIDI_NAMESPACE::MidiInterface<EZ_USB_MIDI_HOST_Transport<settings>, settings>(transports[idx]);
     }
+    productStr[0] = 0;
+    manufacturerStr[0] = 0;
+    serialStr[0] = 0;
   }
 
   ~EZ_USB_MIDI_HOST_Device() {
@@ -118,17 +121,20 @@ public:
         uint16_t buf[256];
 
         memset(buf, 0, sizeof(buf));
+        manufacturerStr[0] = 0;
         uint8_t xfer_result = tuh_descriptor_get_manufacturer_string_sync(devAddr, languageID, buf, sizeof(buf));
         if (XFER_RESULT_SUCCESS == xfer_result) {
           utf16le2utf8(buf, 256, manufacturerStr, maxDevStr);
         }
 
         memset(buf, 0, sizeof(buf));
+        productStr[0] = 0;
         xfer_result = tuh_descriptor_get_product_string_sync(devAddr, languageID, buf, sizeof(buf));
         if (XFER_RESULT_SUCCESS == xfer_result) {
           utf16le2utf8(buf, 256, productStr, maxDevStr);
         }
         memset(buf, 0, sizeof(buf));
+        serialStr[0] = 0;
         xfer_result = tuh_descriptor_get_serial_string_sync(devAddr, languageID, buf, sizeof(buf));
         if (XFER_RESULT_SUCCESS == xfer_result) {
           utf16le2utf8(buf, 256, serialStr, maxDevStr);
