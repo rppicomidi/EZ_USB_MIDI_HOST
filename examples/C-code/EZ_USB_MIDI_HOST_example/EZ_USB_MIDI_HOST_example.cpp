@@ -1,7 +1,7 @@
 /* 
  * The MIT License (MIT)
  *
- * Copyright (c) 2023 rppicomidi
+ * Copyright (c) 2025 rppicomidi
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -46,8 +46,6 @@ USING_NAMESPACE_MIDI
 USING_NAMESPACE_EZ_USB_MIDI_HOST
 RPPICOMIDI_EZ_USB_MIDI_HOST_INSTANCE(usbhMIDI, MidiHostSettingsDefault)
 
-static uint8_t midiDevAddr = 0;
-
 /* MIDI IN MESSAGE REPORTING */
 static void onMidiError(int8_t errCode)
 {
@@ -56,43 +54,59 @@ static void onMidiError(int8_t errCode)
         (errCode & (1UL << WarningSplitSysEx)) ? "Split SysEx":"");
 }
 
+static void printAddrAndCable()
+{
+    uint8_t midiDevAddr, cable;
+    usbhMIDI.getCurrentReadDevAndCable(midiDevAddr, cable);
+    printf("[%02d,%02d] ",midiDevAddr, cable);
+}
+
+
 static void onNoteOff(Channel channel, byte note, byte velocity)
 {
+    printAddrAndCable();
     printf("C%u: Note off#%u v=%u\r\n", channel, note, velocity);
 }
 
 static void onNoteOn(Channel channel, byte note, byte velocity)
 {
+    printAddrAndCable();
     printf("C%u: Note on#%u v=%u\r\n", channel, note, velocity);
 }
 
 static void onPolyphonicAftertouch(Channel channel, byte note, byte amount)
 {
+    printAddrAndCable();
     printf("C%u: PAT#%u=%u\r\n", channel, note, amount);
 }
 
 static void onControlChange(Channel channel, byte controller, byte value)
 {
+    printAddrAndCable();
     printf("C%u: CC#%u=%u\r\n", channel, controller, value);
 }
 
 static void onProgramChange(Channel channel, byte program)
 {
+    printAddrAndCable();
     printf("C%u: Prog=%u\r\n", channel, program);
 }
 
 static void onAftertouch(Channel channel, byte value)
 {
+    printAddrAndCable();
     printf("C%u: AT=%u\r\n", channel, value);
 }
 
 static void onPitchBend(Channel channel, int value)
 {
+    printAddrAndCable();
     printf("C%u: PB=%d\r\n", channel, value);
 }
 
 static void onSysEx(byte * array, unsigned size)
 {
+    printAddrAndCable();
     printf("SysEx:\r\n");
     unsigned multipleOf8 = size/8;
     unsigned remOf8 = size % 8;
@@ -110,6 +124,7 @@ static void onSysEx(byte * array, unsigned size)
 
 static void onSMPTEqf(byte data)
 {
+    printAddrAndCable();
     uint8_t type = (data >> 4) & 0xF;
     data &= 0xF;    
     static const char* fps[4] = {"24", "25", "30DF", "30ND"};
@@ -132,107 +147,168 @@ static void onSMPTEqf(byte data)
 
 static void onSongPosition(unsigned beats)
 {
+    printAddrAndCable();
     printf("SongP=%u\r\n", beats);
 }
 
 static void onSongSelect(byte songnumber)
 {
+    printAddrAndCable();
     printf("SongS#%u\r\n", songnumber);
 }
 
 static void onTuneRequest()
 {
+    printAddrAndCable();
     printf("Tune\r\n");
 }
 
 static void onMidiClock()
 {
+    printAddrAndCable();
     printf("Clock\r\n");
 }
 
 static void onMidiStart()
 {
+    printAddrAndCable();
     printf("Start\r\n");
 }
 
 static void onMidiContinue()
 {
+    printAddrAndCable();
     printf("Cont\r\n");
 }
 
 static void onMidiStop()
 {
+    printAddrAndCable();
     printf("Stop\r\n");
 }
 
 static void onActiveSense()
 {
+    printAddrAndCable();
     printf("ASen\r\n");
 }
 
 static void onSystemReset()
 {
+    printAddrAndCable();
     printf("SysRst\r\n");
 }
 
 static void onMidiTick()
 {
+    printAddrAndCable();
     printf("Tick\r\n");
 }
 
 static void onMidiInWriteFail(uint8_t devAddr, uint8_t cable, bool fifoOverflow)
 {
     if (fifoOverflow)
-        printf("Dev %u cable %u: MIDI IN FIFO overflow\r\n", devAddr, cable);
+        printf("[%02d,%02d] MIDI IN FIFO overflow\r\n", devAddr, cable);
     else
-        printf("Dev %u cable %u: MIDI IN FIFO error\r\n", devAddr, cable);
+        printf("[%02d,%02d] MIDI IN FIFO error\r\n", devAddr, cable);
 }
 
-static void registerMidiInCallbacks()
+static void registerMidiInCallbacks(uint8_t midiDevAddr)
 {
-    auto intf = usbhMIDI.getInterfaceFromDeviceAndCable(midiDevAddr, 0);
-    if (intf == nullptr)
-        return;
-    intf->setHandleNoteOff(onNoteOff);                      // 0x80
-    intf->setHandleNoteOn(onNoteOn);                        // 0x90
-    intf->setHandleAfterTouchPoly(onPolyphonicAftertouch);  // 0xA0
-    intf->setHandleControlChange(onControlChange);          // 0xB0
-    intf->setHandleProgramChange(onProgramChange);          // 0xC0
-    intf->setHandleAfterTouchChannel(onAftertouch);         // 0xD0
-    intf->setHandlePitchBend(onPitchBend);                  // 0xE0
-    intf->setHandleSystemExclusive(onSysEx);                // 0xF0, 0xF7
-    intf->setHandleTimeCodeQuarterFrame(onSMPTEqf);         // 0xF1
-    intf->setHandleSongPosition(onSongPosition);            // 0xF2
-    intf->setHandleSongSelect(onSongSelect);                // 0xF3
-    intf->setHandleTuneRequest(onTuneRequest);              // 0xF6
-    intf->setHandleClock(onMidiClock);                      // 0xF8
-    // 0xF9 as 10ms Tick is not MIDI 1.0 standard but implemented in the Arduino MIDI Library
-    intf->setHandleTick(onMidiTick);                        // 0xF9
-    intf->setHandleStart(onMidiStart);                      // 0xFA
-    intf->setHandleContinue(onMidiContinue);                // 0xFB
-    intf->setHandleStop(onMidiStop);                        // 0xFC
-    intf->setHandleActiveSensing(onActiveSense);            // 0xFE
-    intf->setHandleSystemReset(onSystemReset);              // 0xFF
-    intf->setHandleError(onMidiError);
-
+    uint8_t ncables = usbhMIDI.getNumInCables(midiDevAddr);
+    for (uint8_t cable = 0; cable < ncables; cable++) {
+        auto intf = usbhMIDI.getInterfaceFromDeviceAndCable(midiDevAddr, cable);
+        if (intf == nullptr)
+            return;
+        intf->setHandleNoteOff(onNoteOff);                      // 0x80
+        intf->setHandleNoteOn(onNoteOn);                        // 0x90
+        intf->setHandleAfterTouchPoly(onPolyphonicAftertouch);  // 0xA0
+        intf->setHandleControlChange(onControlChange);          // 0xB0
+        intf->setHandleProgramChange(onProgramChange);          // 0xC0
+        intf->setHandleAfterTouchChannel(onAftertouch);         // 0xD0
+        intf->setHandlePitchBend(onPitchBend);                  // 0xE0
+        intf->setHandleSystemExclusive(onSysEx);                // 0xF0, 0xF7
+        intf->setHandleTimeCodeQuarterFrame(onSMPTEqf);         // 0xF1
+        intf->setHandleSongPosition(onSongPosition);            // 0xF2
+        intf->setHandleSongSelect(onSongSelect);                // 0xF3
+        intf->setHandleTuneRequest(onTuneRequest);              // 0xF6
+        intf->setHandleClock(onMidiClock);                      // 0xF8
+        // 0xF9 as 10ms Tick is not MIDI 1.0 standard but implemented in the Arduino MIDI Library
+        intf->setHandleTick(onMidiTick);                        // 0xF9
+        intf->setHandleStart(onMidiStart);                      // 0xFA
+        intf->setHandleContinue(onMidiContinue);                // 0xFB
+        intf->setHandleStop(onMidiStop);                        // 0xFC
+        intf->setHandleActiveSensing(onActiveSense);            // 0xFE
+        intf->setHandleSystemReset(onSystemReset);              // 0xFF
+        intf->setHandleError(onMidiError);
+    }
     auto dev = usbhMIDI.getDevFromDevAddr(midiDevAddr);
     if (dev == nullptr)
         return;
     dev->setOnMidiInWriteFail(onMidiInWriteFail);
 }
 
+static void unregisterMidiInCallbacks(uint8_t midiDevAddr)
+{
+    uint8_t ncables = usbhMIDI.getNumInCables(midiDevAddr);
+    for (uint8_t cable = 0; cable < ncables; cable++) {
+        auto intf = usbhMIDI.getInterfaceFromDeviceAndCable(midiDevAddr, cable);
+        if (intf == nullptr)
+            return;
+        intf->disconnectCallbackFromType(NoteOn);
+        intf->disconnectCallbackFromType(NoteOff);
+        intf->disconnectCallbackFromType(AfterTouchPoly);
+        intf->disconnectCallbackFromType(ControlChange);
+        intf->disconnectCallbackFromType(ProgramChange);
+        intf->disconnectCallbackFromType(AfterTouchChannel);
+        intf->disconnectCallbackFromType(PitchBend);
+        intf->disconnectCallbackFromType(SystemExclusive);
+        intf->disconnectCallbackFromType(TimeCodeQuarterFrame);
+        intf->disconnectCallbackFromType(SongPosition);
+        intf->disconnectCallbackFromType(SongSelect);
+        intf->disconnectCallbackFromType(TuneRequest);
+        intf->disconnectCallbackFromType(Clock);
+        // 0xF9 as 10ms Tick is not MIDI 1.0 standard but implemented in the Arduino MIDI Library
+        intf->disconnectCallbackFromType(Tick);
+        intf->disconnectCallbackFromType(Start);
+        intf->disconnectCallbackFromType(Continue);
+        intf->disconnectCallbackFromType(Stop);
+        intf->disconnectCallbackFromType(ActiveSensing);
+        intf->disconnectCallbackFromType(SystemReset);
+        intf->setHandleError(nullptr);
+    }
+    auto dev = usbhMIDI.getDevFromDevAddr(midiDevAddr);
+    if (dev == nullptr)
+        return;
+    dev->setOnMidiInWriteFail(nullptr);
+}
 /* CONNECTION MANAGEMENT */
+static void listConnectedDevices()
+{
+    printf("Dev  VID:PID  Product Name[Manufacter]{serial string}\r\n");
+    for (uint8_t midiDevAddr = 1; midiDevAddr <= RPPICOMIDI_TUH_MIDI_MAX_DEV; midiDevAddr++) {
+        auto dev = usbhMIDI.getDevFromDevAddr(midiDevAddr);
+        if (dev) {
+            printf("%02u  %04x:%04x %s[%s]{%s}\r\n",midiDevAddr, dev->getVID(), dev->getPID(),
+                dev->getProductStr(), dev->getManufacturerStr(), dev->getSerialString());
+        }
+    }
+}
+
 static void onMIDIconnect(uint8_t devAddr, uint8_t nInCables, uint8_t nOutCables)
 {
     printf("MIDI device at address %u has %u IN cables and %u OUT cables\r\n", devAddr, nInCables, nOutCables);
-    midiDevAddr = devAddr;
-    registerMidiInCallbacks();
+    registerMidiInCallbacks(devAddr);
+    listConnectedDevices();
 }
 
 static void onMIDIdisconnect(uint8_t devAddr)
 {
     printf("MIDI device at address %u unplugged\r\n", devAddr);
-    midiDevAddr = 0;
+    unregisterMidiInCallbacks(devAddr);
+    // Note that listConnectedDevices() will still list the just unplugged
+    //  device as connected until this function returns
+    listConnectedDevices();
 }
 
 
@@ -256,30 +332,33 @@ static void blinkLED(void)
 #endif
 }
 
+// toggle NOTE On, Note Off for the Mackie Control transport button LEDs
+// for the highest cable number on each connected device
+// 
 static void sendNextNote()
 {
     static uint8_t firstNote = 0x5b; // Mackie Control rewind
     static uint8_t lastNote = 0x5f; // Mackie Control stop
     static uint8_t offNote = lastNote;
     static uint8_t onNote = firstNote;
-    // toggle NOTE On, Note Off for the Mackie Control channels 1-8 REC LED
     const uint32_t intervalMs = 1000;
     static uint32_t startMs = 0;
-    auto intf = usbhMIDI.getInterfaceFromDeviceAndCable(midiDevAddr, usbhMIDI.getNumOutCables(midiDevAddr)-1);
-    if (intf == nullptr)
-        return; // not connected
-    
     if ( board_millis() - startMs < intervalMs)
         return; // not enough time
     startMs += intervalMs;
-    intf->sendNoteOn(offNote++, 0, 1);
-    intf->sendNoteOn(onNote++, 0x7f, 1);
-    
-    if (offNote > lastNote)
+    for (uint8_t midiDevAddr = 1; midiDevAddr <= RPPICOMIDI_TUH_MIDI_MAX_DEV; midiDevAddr++) {
+        auto intf = usbhMIDI.getInterfaceFromDeviceAndCable(midiDevAddr, usbhMIDI.getNumOutCables(midiDevAddr)-1);
+        if (intf == nullptr)
+            continue; // not connected
+        intf->sendNoteOn(offNote, 0, 1);
+        intf->sendNoteOn(onNote, 0x7f, 1);
+        
+    }
+    if (++offNote > lastNote)
         offNote = firstNote;
-    if (onNote > lastNote)
+    if (++onNote > lastNote)
         onNote = firstNote;
-}
+ }
 
 /* APPLICATION STARTS HERE */
 
