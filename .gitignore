@@ -1,3 +1,4 @@
 examples/C-code/EZ_USB_MIDI_HOST_example/build
+examples/C-code/EZ_USB_MIDI_HOST_hub_example/build
 examples/C-code/EZ_USB_MIDI_HOST_PIO_example/build
 
