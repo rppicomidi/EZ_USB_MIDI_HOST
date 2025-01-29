@@ -193,12 +193,12 @@ public:
   /// @brief
   ///
   /// @return get Vendor ID for the connected device
-  uint16_t get_vid() { return vid; }
+  uint16_t getVID() { return vid; }
 
   /// @brief
   ///
   /// @return get Product ID for the connected device
-  uint16_t get_pid() { return pid; }
+  uint16_t getPID() { return pid; }
 
   /// @brief
   /// @return the null-terminated Product string if the device has one
