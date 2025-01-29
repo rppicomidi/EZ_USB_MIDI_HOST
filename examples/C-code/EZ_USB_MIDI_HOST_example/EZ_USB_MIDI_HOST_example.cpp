@@ -61,7 +61,6 @@ static void printAddrAndCable()
     printf("[%02d,%02d] ",midiDevAddr, cable);
 }
 
-
 static void onNoteOff(Channel channel, byte note, byte velocity)
 {
     printAddrAndCable();
@@ -358,7 +357,7 @@ static void sendNextNote()
         offNote = firstNote;
     if (++onNote > lastNote)
         onNote = firstNote;
- }
+}
 
 /* APPLICATION STARTS HERE */
 
