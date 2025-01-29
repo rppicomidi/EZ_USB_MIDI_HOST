@@ -87,6 +87,7 @@
 // MIDI Host string support
 #define CFG_MIDI_HOST_DEVSTRINGS 1
 
+#define CFG_TUH_MIDI_RX_BUFSIZE 256
 #ifdef __cplusplus
  }
 #endif

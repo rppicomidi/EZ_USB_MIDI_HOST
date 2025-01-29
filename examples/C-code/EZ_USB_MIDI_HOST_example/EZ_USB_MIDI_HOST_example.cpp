@@ -265,7 +265,7 @@ static void sendNextNote()
     // toggle NOTE On, Note Off for the Mackie Control channels 1-8 REC LED
     const uint32_t intervalMs = 1000;
     static uint32_t startMs = 0;
-    auto intf = usbhMIDI.getInterfaceFromDeviceAndCable(midiDevAddr, 0);
+    auto intf = usbhMIDI.getInterfaceFromDeviceAndCable(midiDevAddr, usbhMIDI.getNumOutCables(midiDevAddr)-1);
     if (intf == nullptr)
         return; // not connected
     
