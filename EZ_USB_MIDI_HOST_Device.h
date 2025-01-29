@@ -50,6 +50,56 @@ public:
     }
   }
 
+  /// convert the UTF-16le string from a USB string descriptor to a UTF-8 C-string
+  /// Only works with single 16-bit word src characters; converts 2-word characters
+  /// to a single byte space character
+  /// See https://en.wikipedia.org/wiki/UTF-8 and https://en.wikipedia.org/wiki/UTF-16
+  void utf16le2utf8(uint16_t* src, size_t maxsrc, uint8_t* dest, size_t maxdest) {
+    size_t destidx = 0;
+    size_t srcidx = 1; // The first word contains the string length in word and the descriptor type
+    size_t srclen = ((src[0] & 0xff) - 2) / 2;
+    if (srclen < maxsrc)
+        maxsrc = srclen + 1;
+    for(;;) {
+      // assume a 0 word in the src array is a null termination
+      if (srcidx >= maxsrc || src[srcidx] == 0 || (destidx+1) >= maxdest) {
+        dest[destidx] = 0;
+        break;
+      }
+      else if (src[srcidx] < 0x80) {
+        dest[destidx++] = src[srcidx++] & 0x7f;
+      }
+      else if (src[srcidx] < 0x800) {
+        if ((destidx+2) >= maxdest) {
+          // no room for a 2-byte code
+          dest[destidx] = 0;
+          break;
+        }
+        else {
+          dest[destidx++] = 0xC0 | ((src[srcidx] >> 6) & 0x1f);
+          dest[destidx++] = 0x80 | (src[srcidx++] & 0x3f);
+        }
+      }
+      else if (src[srcidx] < 0xD800 || src[srcidx] >= 0xE000) {
+        if ((destidx+3) >= maxdest) {
+          // no room for a 3-byte code
+          dest[destidx] = 0;
+          break;
+        }
+        else {
+          dest[destidx++] = 0xE0 | ((src[srcidx] >> 12) & 0xf);
+          dest[destidx++] = 0x80 | ((src[srcidx] >> 6) & 0x3f);
+          dest[destidx++] = 0x80 | (src[srcidx++] & 0x3f);
+        }
+      }
+      else {
+        // paired surrogate; output is space and skipping single encoding
+        dest[destidx++] = ' ';
+        srcidx +=2;
+      }
+    }
+  }
+
   /// Call this function to configure the MIDI interface objects
   /// associated with the device's virtual MIDI cables
   void onConnect(uint8_t devAddr_, uint8_t nInCables_, uint8_t nOutCables_) {
@@ -64,6 +114,25 @@ public:
             interfaces[idx]->begin(MIDI_CHANNEL_OMNI);
         }
         tuh_vid_pid_get(devAddr, &vid, &pid);
+        const uint16_t languageID = 0x0409;
+        uint16_t buf[256];
+
+        memset(buf, 0, sizeof(buf));
+        uint8_t xfer_result = tuh_descriptor_get_manufacturer_string_sync(devAddr, languageID, buf, sizeof(buf));
+        if (XFER_RESULT_SUCCESS == xfer_result) {
+          utf16le2utf8(buf, 256, manufacturerStr, maxDevStr);
+        }
+
+        memset(buf, 0, sizeof(buf));
+        xfer_result = tuh_descriptor_get_product_string_sync(devAddr, languageID, buf, sizeof(buf));
+        if (XFER_RESULT_SUCCESS == xfer_result) {
+          utf16le2utf8(buf, 256, productStr, maxDevStr);
+        }
+        memset(buf, 0, sizeof(buf));
+        xfer_result = tuh_descriptor_get_serial_string_sync(devAddr, languageID, buf, sizeof(buf));
+        if (XFER_RESULT_SUCCESS == xfer_result) {
+          utf16le2utf8(buf, 256, serialStr, maxDevStr);
+        }
     }
   }
 
@@ -131,6 +200,17 @@ public:
   /// @return get Product ID for the connected device
   uint16_t get_pid() { return pid; }
 
+  /// @brief
+  /// @return the null-terminated Product string if the device has one
+  const uint8_t* getProductStr() {return productStr; }
+
+  /// @brief
+  /// @return the null-terminated Manufacturer string if the device has one
+  const uint8_t* getManufacturerStr() {return manufacturerStr; }
+
+  /// @brief
+  /// @return the null-terminated Serial string if the device has one
+  const uint8_t* getSerialString() {return serialStr; }
 private:
   void clearTransports() {
     for (uint8_t idx = 0; idx < settings::MaxCables; idx++) {
@@ -142,6 +222,10 @@ private:
   uint8_t nOutCables;
   uint16_t vid;
   uint16_t pid;
+  static const size_t maxDevStr = 512;
+  uint8_t productStr[maxDevStr];
+  uint8_t manufacturerStr[maxDevStr];
+  uint8_t serialStr[maxDevStr];
   void (*onMidiInWriteFail)(uint8_t devAddr, uint8_t cable, bool fifoOverflow);
   EZ_USB_MIDI_HOST_Transport<settings> transports[settings::MaxCables];
   MIDI_NAMESPACE::MidiInterface<EZ_USB_MIDI_HOST_Transport<settings>, settings>* interfaces[settings::MaxCables];
