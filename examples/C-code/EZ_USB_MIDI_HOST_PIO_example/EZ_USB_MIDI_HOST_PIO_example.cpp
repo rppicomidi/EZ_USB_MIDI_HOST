@@ -310,7 +310,7 @@ static void onMIDIdisconnect(uint8_t devAddr)
     printf("MIDI device at address %u unplugged\r\n", devAddr);
     unregisterMidiInCallbacks(devAddr);
     // Note that listConnectedDevices() will still list the just unplugged
-    //  device as connected until this function returns
+    // device as connected until this function returns.
     listConnectedDevices();
 }
 
@@ -377,17 +377,7 @@ int main() {
     pio_usb_configuration_t pio_cfg = PIO_USB_DEFAULT_CONFIG;
     // Use GP16 for USB D+ and GP17 for USB D-
     pio_cfg.pin_dp = 16;
-    // Swap PIOs from default. The RX state machine takes up the
-    // whole PIO program memory. Without these two lines, if you
-    // try to use this code on a Pico W board, the CYW43 SPI PIO
-    // code, which runs on PIO 1, won't fit.
-    // Other potential conflict is the DMA channel tx_ch. However,
-    // the CYW43 SPI driver code is not hard-wired to any particular
-    // DMA channel, so as long as tuh_configure() and tuh_init()run
-    // after board_init(), which also calls tuh_configure(), and before
-    // cyw43_arch_init(), there should be no conflict.
-    pio_cfg.pio_rx_num = 0;
-    pio_cfg.pio_tx_num = 1;
+
     tuh_configure(BOARD_TUH_RHPORT, TUH_CFGID_RPI_PIO_USB_CONFIGURATION, &pio_cfg);
 
     usbhMIDI.begin(BOARD_TUH_RHPORT, onMIDIconnect, onMIDIdisconnect);
