@@ -53,16 +53,37 @@ public:
     }
   }
 
-  /// convert the UTF-16le string from a USB string descriptor to a UTF-8 C-string
-  /// Only works with single 16-bit word src characters; converts 2-word characters
-  /// to a single byte space character
-  /// See https://en.wikipedia.org/wiki/UTF-8 and https://en.wikipedia.org/wiki/UTF-16
-  void utf16le2utf8(uint16_t* src, size_t maxsrc, uint8_t* dest, size_t maxdest) {
+
+  /// @brief convert the UTF-16 string from a USB string descriptor to a UTF-8 C-string
+  ///
+  /// Only works with single 16-bit word src characters. U+0000 (NULL) is
+  /// treated as a string terminator in the src string. On return dest is NULL terminated.
+  /// See https://www.unicode.org/versions/Unicode16.0.0/core-spec/chapter-23/#G20365.
+  /// For conversion, see
+  /// See https://www.unicode.org/versions/Unicode16.0.0/core-spec/chapter-3/#G7404
+  /// UTF-16 encoding that is not well formed emits U+FFFD See
+  /// see https://www.unicode.org/versions/Unicode16.0.0/core-spec/chapter-3/#G2155
+  /// https://www.unicode.org/versions/Unicode16.0.0/core-spec/chapter-5/#G40630
+  ///
+  /// For easier to understand references, see
+  /// https://en.wikipedia.org/wiki/UTF-8 and https://en.wikipedia.org/wiki/UTF-16
+  /// @param src points to an array of UTF-16 encoded code units; may be NULL terminated.
+  ///        It is important that the byte order of the src array match the endian
+  ///        encoding order of the machine using this function or else this function
+  ///        will not work correctly. If there is a Byte Order Mark U+FEFF in src[0],
+  ///        it will be skipped and not encoded.
+  /// @param maxsrc is at least as large as number of code units in the src array; if it is larger, then
+  ///        the array must be NULL terminated
+  /// @param dest points to an array of bytes for storing the UTF-8 encoded string. It is NULL terminated
+  /// @param maxdest is the maximum number of bytes that can be stored in the dest buffer, including the NULL termination
+  /// @note if maxdest is set larger than the dest memory buffer size, bad things happen.
+  /// @todo This function is more generally useful than just this class. Make this a separate repository.
+  void utf16ToUtf8(uint16_t* src, size_t maxsrc, uint8_t* dest, size_t maxdest) {
     size_t destidx = 0;
-    size_t srcidx = 1; // The first word contains the string length in word and the descriptor type
-    size_t srclen = ((src[0] & 0xff) - 2) / 2;
-    if (srclen < maxsrc)
-        maxsrc = srclen + 1;
+    size_t srcidx = 0; // The first word contains the string length in word and the descriptor type
+    if (srcidx < maxsrc && src[srcidx] == 0xFEFF) {
+      ++srcidx; // ignore Byte Order Mark
+    }
     for(;;) {
       // assume a 0 word in the src array is a null termination
       if (srcidx >= maxsrc || src[srcidx] == 0 || (destidx+1) >= maxdest) {
@@ -95,16 +116,67 @@ public:
           dest[destidx++] = 0x80 | (src[srcidx++] & 0x3f);
         }
       }
+      else if ((srcidx+1) < maxsrc) {
+        // should be paired surrogate
+        if ((destidx + 4) < maxdest) {
+          // There is enough room to decode a paired surrogate
+          if (src[srcidx] >= 0xD800 && src[srcidx] < 0xDC00 &&
+              src[srcidx+1] >= 0xDC00 && src[srcidx+1] < 0xE000) {
+            // There is a well-formed surrogate pair
+
+            // compute the 32-bit UTF code point
+            uint32_t upper = src[srcidx++] & 0x3FF;
+            uint32_t lower = src[srcidx++] & 0x3FF;
+            uint32_t code = ((upper << 10) | lower) + 0x10000;
+            // Convert to UTF-8
+            dest[destidx++] = 0xF0 | ((code >> 18) & 0x07);
+            dest[destidx++] = 0x80 | ((code >> 12) & 0x3f);
+            dest[destidx++] = 0x80 | ((code >> 6) & 0x3f);
+            dest[destidx++] = 0x80 | (code & 0x3f);
+          }
+          else {
+            // Unpaired surrogate value; encode with replacement character U+FFFD
+            // and attempt to keep going
+            dest[destidx++] = 0xEF;
+            dest[destidx++] = 0xBF;
+            dest[destidx++] = 0xBD;
+            ++srcidx;
+          }
+        }
+        else {
+          // Not enough room to decode the surrogate pair. Give up
+          dest[destidx] = 0;
+          break;
+        }
+      }
       else {
-        // paired surrogate; output is space and skipping single encoding
-        dest[destidx++] = ' ';
-        srcidx +=2;
+        // Last code unit is not part of a paired surrogate, so it is not well formed UTF-16LE.
+        if ((destidx + 3) < maxdest) {
+          // There is space to encode the last code unit as U+FFFD
+          dest[destidx++] = 0xEF;
+          dest[destidx++] = 0xBF;
+          dest[destidx++] = 0xBD;
+        }
+        // Last code unit, so done
+        dest[destidx] = 0;
+        break;
       }
     }
   }
 
-  /// Call this function to configure the MIDI interface objects
+
+  /// @brief
+  /// @param src a USB string descriptor array
+  /// @return the number of 16-bit data words in the string descriptor array.
+  size_t getStringDescriptorLen(uint16_t *src) {
+    return ((src[0] & 0xff) - 2) / 2;
+  }
+
+  /// @brief Call this function to configure the MIDI interface objects
   /// associated with the device's virtual MIDI cables
+  /// @param devAddr_ the connected device's address
+  /// @param nInCables_ the number of virtual MIDI IN cables the device supports
+  /// @param nOutCables_ the number of virtual MIDI OUT cables the device supports
   void onConnect(uint8_t devAddr_, uint8_t nInCables_, uint8_t nOutCables_) {
     if (devAddr_ > 0 && devAddr_ <= RPPICOMIDI_TUH_MIDI_MAX_DEV) {
         devAddr = devAddr_;
@@ -117,27 +189,34 @@ public:
             interfaces[idx]->begin(MIDI_CHANNEL_OMNI);
         }
         tuh_vid_pid_get(devAddr, &vid, &pid);
-        const uint16_t languageID = 0x0409;
-        uint16_t buf[256];
 
-        memset(buf, 0, sizeof(buf));
+        uint16_t buf[256];
+        uint16_t languageID;
+        // Set the languateID to the default, which is supposed to be the first available ID
+        // string descriptor index 0
+        uint8_t xfer_result = tuh_descriptor_get_string_sync(devAddr, 0, 0, buf, sizeof(buf));
+        if (XFER_RESULT_SUCCESS == xfer_result && getStringDescriptorLen(buf) >= 1) {
+          languageID = buf[1];
+        }
+        else {
+          // default to US English
+          languageID = 0x0409;
+        }
         manufacturerStr[0] = 0;
-        uint8_t xfer_result = tuh_descriptor_get_manufacturer_string_sync(devAddr, languageID, buf, sizeof(buf));
+        xfer_result = tuh_descriptor_get_manufacturer_string_sync(devAddr, languageID, buf, sizeof(buf));
         if (XFER_RESULT_SUCCESS == xfer_result) {
-          utf16le2utf8(buf, 256, manufacturerStr, maxDevStr);
+          utf16ToUtf8(buf+1, getStringDescriptorLen(buf), manufacturerStr, maxDevStr);
         }
 
-        memset(buf, 0, sizeof(buf));
         productStr[0] = 0;
         xfer_result = tuh_descriptor_get_product_string_sync(devAddr, languageID, buf, sizeof(buf));
         if (XFER_RESULT_SUCCESS == xfer_result) {
-          utf16le2utf8(buf, 256, productStr, maxDevStr);
+          utf16ToUtf8(buf+1, getStringDescriptorLen(buf), productStr, maxDevStr);
         }
-        memset(buf, 0, sizeof(buf));
         serialStr[0] = 0;
         xfer_result = tuh_descriptor_get_serial_string_sync(devAddr, languageID, buf, sizeof(buf));
         if (XFER_RESULT_SUCCESS == xfer_result) {
-          utf16le2utf8(buf, 256, serialStr, maxDevStr);
+          utf16ToUtf8(buf+1, getStringDescriptorLen(buf), serialStr, maxDevStr);
         }
     }
   }
