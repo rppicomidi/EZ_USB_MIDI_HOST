@@ -25,13 +25,11 @@
 
 /**
  * This demo program is designed to test the USB MIDI Host driver for a single USB
- * MIDI device connected to the USB Host port. It sends to the USB MIDI device the
- * sequence of half-steps from B-flat to D whose note numbers correspond to the
- * transport button LEDs on a Mackie Control compatible control surface. It also
- * prints to a UART serial port console the messages received from the USB MIDI device.
- *
- * This program works with a single USB MIDI device connected via a USB hub, but it
- * does not handle multiple USB MIDI devices connected at the same time.
+ * MIDI device connected to the USB Host port or up to 4 devices connected via a
+ * USB Hub. It sends to the USB MIDI device(s) the sequence of half-steps from
+ * B-flat to D whose note numbers correspond to the transport button LEDs on a Mackie
+ * Control compatible control surface. It also prints to a UART serial port console
+ * the messages received from each USB MIDI device.
  */
 
 #if !defined(USE_TINYUSB_HOST) || !defined(USE_TINYUSB)

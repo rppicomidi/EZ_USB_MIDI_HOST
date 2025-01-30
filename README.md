@@ -160,7 +160,7 @@ a hub. All programs do the same thing.
   number virtual MIDI cable on all connected MIDI devices. If your MIDI
   device has Mackie Control transport button LEDs, this will light all
   5 transport buttons in sequence.
-- print out every MIDI message it receives on cable 0. The numbers in
+- print out to UART console every MIDI message it receives. The numbers in
   brackets are the connected MIDI device number and the virtual cable number.
 
 ### C/C++ Examples
@@ -186,8 +186,8 @@ Next select File->Examples->EZ_USB_MIDI_HOST->arduino->[example program name].
 A new sketch window will open up. See the Building Arduino Applications section 
 of the usb_midi_host
 [README](https://github.com/rppicomidi/usb_midi_host/blob/main/README.md) for
-for setting up the board parameters. Note that native rp2040 hardware example
-directs Serial output to the Serial1 port, which is rp2040 UART0.
+for setting up the board parameters. Note that both examples
+direct Serial output to the Serial1 port, which is rp2040 UART0.
 
 # LIBRARY CONFIGURATION and IMPLEMENTATION DETAILS
 Because the Arduino IDE's build system does not support configuring
